@@ -61,9 +61,18 @@ hr { border: none; border-top: 1px solid #222226; margin: 1.5rem 0; }
 /* NOTATION */
 .notation-box {
   background: #fff; border-radius: 8px; padding: 0.75rem 1rem;
-  margin: 1.2rem 0; min-height: 100px;
+  margin: 1.2rem 0; min-height: 100px; opacity: 1;
 }
-.notation-box svg { max-width: 100%; }
+.notation-box svg { max-width: 100%; display: block; opacity: 1; }
+.notation-box svg path,
+.notation-box svg rect,
+.notation-box svg ellipse,
+.notation-box svg polygon,
+.notation-box svg line,
+.notation-box svg text {
+  fill-opacity: 1 !important;
+  stroke-opacity: 1 !important;
+}
 
 /* CHOICE CARDS (Riepel) */
 .choice-row { display: flex; gap: 0.75rem; margin: 0.75rem 0; flex-wrap: wrap; }
@@ -89,7 +98,73 @@ hr { border: none; border-top: 1px solid #222226; margin: 1.5rem 0; }
 .ncard.rsel { border-color: #5b6af0; background: #1c1c30; color: #fff; }
 
 label { font-size: 0.82rem; color: #aaa; display: block; margin-bottom: 0.25rem; }
+/* AUTHORSHIP INPUTS */
+.authorship { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid #222226; }
+.auth-field { display: flex; flex-direction: column; gap: 0.25rem; }
+.auth-field label { font-size: 0.72rem; color: #666; margin: 0; }
+.auth-input {
+  background: #16161a; border: 1px solid #333; color: #e8e8ea;
+  padding: 0.35rem 0.65rem; border-radius: 6px; font-size: 0.85rem;
+  min-width: 190px;
+}
+.auth-input:focus { outline: none; border-color: #5b6af0; }
+
 .status { font-size: 0.82rem; color: #666; margin-top: 0.5rem; min-height: 1.1em; }
+
+/* FRAGMENT REFERENCE TABLE */
+.ref-toggle {
+  background: none; border: 1px solid #333; color: #aaa; border-radius: 6px;
+  padding: 0.4rem 0.9rem; font-size: 0.8rem; cursor: pointer; margin-top: 1rem;
+  transition: border-color 0.2s, color 0.2s;
+}
+.ref-toggle:hover { border-color: #5b6af0; color: #e8e8ea; }
+.ref-section { margin-top: 1.5rem; }
+.ref-measure-label {
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #5b6af0; margin: 1.5rem 0 0.6rem;
+}
+.ref-measure-label:first-child { margin-top: 0; }
+.ref-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.6rem;
+}
+.ref-cell {
+  background: #16161a; border: 1px solid #252529; border-radius: 8px;
+  padding: 0.5rem 0.6rem 0.4rem;
+  display: flex; flex-direction: column; align-items: stretch; gap: 0.3rem;
+  overflow: hidden;
+}
+.ref-cell.active-frag { border-color: #5b6af0; }
+.ref-dice-label {
+  font-size: 0.65rem; font-weight: 700; color: #666;
+  letter-spacing: 0.05em;
+}
+.ref-notation {
+  background: #fff; border-radius: 4px;
+  width: 100%; overflow: hidden; opacity: 1;
+}
+.ref-notation svg {
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  opacity: 1;
+}
+.ref-notation svg path,
+.ref-notation svg rect,
+.ref-notation svg ellipse,
+.ref-notation svg polygon,
+.ref-notation svg line,
+.ref-notation svg text {
+  fill-opacity: 1 !important;
+  stroke-opacity: 1 !important;
+}
+.frag-btn {
+  font-size: 0.72rem; background: #252529; border: none; color: #aaa;
+  border-radius: 5px; padding: 0.22rem 0.6rem; cursor: pointer; transition: background 0.15s;
+}
+.frag-btn:hover { background: #5b6af0; color: #fff; }
+.frag-btn.playing { background: #5b6af0; color: #fff; }
 </style>
 </head>
 <body>
@@ -137,8 +212,26 @@ label { font-size: 0.82rem; color: #aaa; display: block; margin-bottom: 0.25rem;
   <div id="kc" class="hidden">
     <button class="btn btn-secondary" onclick="playState('k')">▶ Play</button>
     <button class="btn btn-secondary" onclick="dlMidi('k')">↓ Download MIDI</button>
+    <div class="authorship">
+      <div class="auth-field">
+        <label>Title</label>
+        <input type="text" id="k-title" class="auth-input" value="Kirnberger Polonaise">
+      </div>
+      <div class="auth-field">
+        <label>Composer</label>
+        <input type="text" id="k-composer" class="auth-input" list="k-composers" value="Johann Philipp Kirnberger">
+        <datalist id="k-composers">
+          <option value="Johann Philipp Kirnberger">
+          <option value="AI">
+        </datalist>
+      </div>
+    </div>
   </div>
   <div class="status" id="ks"></div>
+
+  <hr>
+  <button class="ref-toggle" onclick="toggleRefTable()">▾ Fragment Reference Table</button>
+  <div id="kref-wrap" class="ref-section hidden"></div>
 </div>
 
 <!-- ══════════════ RIEPEL ══════════════ -->
@@ -167,6 +260,20 @@ label { font-size: 0.82rem; color: #aaa; display: block; margin-bottom: 0.25rem;
   <div id="rc" class="hidden">
     <button class="btn btn-secondary" onclick="playState('r')">▶ Play</button>
     <button class="btn btn-secondary" onclick="dlMidi('r')">↓ Download MIDI</button>
+    <div class="authorship">
+      <div class="auth-field">
+        <label>Title</label>
+        <input type="text" id="r-title" class="auth-input" value="Riepel Minuet">
+      </div>
+      <div class="auth-field">
+        <label>Composer</label>
+        <input type="text" id="r-composer" class="auth-input" list="r-composers" value="Joseph Riepel">
+        <datalist id="r-composers">
+          <option value="Joseph Riepel">
+          <option value="AI">
+        </datalist>
+      </div>
+    </div>
   </div>
   <div class="status" id="rs"></div>
 </div>
@@ -210,6 +317,20 @@ label { font-size: 0.82rem; color: #aaa; display: block; margin-bottom: 0.25rem;
   <div id="gc" class="hidden">
     <button class="btn btn-secondary" onclick="playState('g')">▶ Play</button>
     <button class="btn btn-secondary" onclick="dlMidi('g')">↓ Download MIDI</button>
+    <div class="authorship">
+      <div class="auth-field">
+        <label>Title</label>
+        <input type="text" id="g-title" class="auth-input" value="Galeazzi Figure">
+      </div>
+      <div class="auth-field">
+        <label>Composer</label>
+        <input type="text" id="g-composer" class="auth-input" list="g-composers" value="Francesco Galeazzi">
+        <datalist id="g-composers">
+          <option value="Francesco Galeazzi">
+          <option value="AI">
+        </datalist>
+      </div>
+    </div>
   </div>
   <div class="status" id="gs"></div>
 </div>
@@ -308,6 +429,145 @@ const K = [
 ];
 
 let kState = null;
+let kRefBuilt = false;
+let kRefOpen  = false;
+let activeFragBtn = null;
+let activeFragSynth = null;
+
+const K_MEASURE_LABELS = [
+  'Measure 1 — I chord  (C · E · G)',
+  'Measure 2 — V chord  (G · B · D)',
+  'Measure 3 — I chord  (C · E · G)',
+  'Measure 4 — I chord, cadential close',
+];
+
+function toggleRefTable() {
+  kRefOpen = !kRefOpen;
+  const wrap = document.getElementById('kref-wrap');
+  const btn  = wrap.previousElementSibling; // the toggle button
+  if (kRefOpen) {
+    wrap.classList.remove('hidden');
+    btn.textContent = '▴ Fragment Reference Table';
+    if (!kRefBuilt) buildKRefTable();
+  } else {
+    wrap.classList.add('hidden');
+    btn.textContent = '▾ Fragment Reference Table';
+  }
+}
+
+function buildKRefTable() {
+  const wrap = document.getElementById('kref-wrap');
+  wrap.innerHTML = '';
+
+  K.forEach((measure, mi) => {
+    const sectionLabel = document.createElement('div');
+    sectionLabel.className = 'ref-measure-label';
+    sectionLabel.textContent = K_MEASURE_LABELS[mi];
+    wrap.appendChild(sectionLabel);
+
+    const grid = document.createElement('div');
+    grid.className = 'ref-grid';
+
+    measure.forEach((frag, fi) => {
+      const sum   = fi + 2;  // dice sum 2–12
+      const divId = `kref-${mi}-${fi}`;
+
+      const cell = document.createElement('div');
+      cell.className = 'ref-cell';
+      cell.id = `kref-cell-${mi}-${fi}`;
+
+      const diceLabel = document.createElement('div');
+      diceLabel.className = 'ref-dice-label';
+      diceLabel.textContent = `Sum ${sum}`;
+
+      const notDiv = document.createElement('div');
+      notDiv.className = 'ref-notation';
+      notDiv.id = divId;
+
+      const playBtn = document.createElement('button');
+      playBtn.className = 'frag-btn';
+      playBtn.textContent = '▶ Play';
+      playBtn.onclick = () => playFrag(mi, fi, playBtn);
+
+      cell.appendChild(diceLabel);
+      cell.appendChild(notDiv);
+      cell.appendChild(playBtn);
+      grid.appendChild(cell);
+    });
+
+    wrap.appendChild(grid);
+  });
+
+  // Render all notation after DOM is populated
+  K.forEach((measure, mi) => {
+    measure.forEach((frag, fi) => {
+      const divId = `kref-${mi}-${fi}`;
+      const abc = `X:1\nM:3/4\nL:1/8\nK:C\n| ${frag.abc} |`;
+      ABCJS.renderAbc(divId, abc, { staffwidth: 220, paddingtop: 6, paddingbottom: 6, paddingleft: 8, paddingright: 8, foregroundColor: '#000000' });
+    });
+  });
+
+  kRefBuilt = true;
+}
+
+async function playFrag(mi, fi, btn) {
+  // Stop any currently playing fragment
+  if (activeFragSynth) {
+    try { activeFragSynth.dispose(); } catch(e){}
+    activeFragSynth = null;
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
+  }
+  if (activeFragBtn && activeFragBtn !== btn) {
+    activeFragBtn.textContent = '▶ Play';
+    activeFragBtn.classList.remove('playing');
+  }
+
+  // If same button was playing, just stop
+  if (activeFragBtn === btn && !btn.classList.contains('playing') === false) {
+    // was playing, now stopped above — reset and return
+    btn.textContent = '▶ Play';
+    btn.classList.remove('playing');
+    activeFragBtn = null;
+    return;
+  }
+
+  activeFragBtn = btn;
+  btn.textContent = '■ Stop';
+  btn.classList.add('playing');
+
+  await Tone.start();
+
+  const synth = new Tone.Synth({
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 0.01, decay: 0.3, sustain: 0.25, release: 1.2 }
+  }).toDestination();
+
+  activeFragSynth = synth;
+  Tone.Transport.bpm.value = 80;
+
+  const notes = K[mi][fi].notes;
+  let t = 0;
+  notes.forEach(({ pitch, dur }) => {
+    Tone.Transport.schedule(time => {
+      synth.triggerAttackRelease(Tone.Frequency(pitch, 'midi').toNote(), dur * (60/80), time);
+    }, t * (60/80));
+    t += dur;
+  });
+
+  const totalSec = t * (60/80);
+  Tone.Transport.schedule(() => {
+    btn.textContent = '▶ Play';
+    btn.classList.remove('playing');
+    try { synth.dispose(); } catch(e){}
+    activeFragSynth = null;
+    activeFragBtn = null;
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
+  }, totalSec + 0.1);
+
+  Tone.Transport.start();
+}
 
 function rollKirnberger() {
   const dice = [0,1,2,3].map(() => {
@@ -453,7 +713,7 @@ let gState = null;
 // NOTATION (ABCJS)
 // ─────────────────────────────────────────
 function render(divId, abc) {
-  ABCJS.renderAbc(divId, abc, { responsive: 'resize', paddingleft: 10, paddingright: 10 });
+  ABCJS.renderAbc(divId, abc, { responsive: 'resize', paddingleft: 10, paddingright: 10, foregroundColor: '#000000' });
 }
 function show(id) { document.getElementById(id).classList.remove('hidden'); }
 
@@ -464,6 +724,10 @@ let activePart = null;
 
 function stopAll() {
   if (activePart) { try { activePart.stop(); activePart.dispose(); } catch(e){} activePart = null; }
+  if (activeFragSynth) {
+    try { activeFragSynth.dispose(); } catch(e){} activeFragSynth = null;
+    if (activeFragBtn) { activeFragBtn.textContent = '▶ Play'; activeFragBtn.classList.remove('playing'); activeFragBtn = null; }
+  }
   Tone.Transport.stop();
   Tone.Transport.cancel();
 }
@@ -516,13 +780,22 @@ function varlen(n) {
   return b;
 }
 
-function buildMidi(notes, bpm) {
+function buildMidi(notes, bpm, title = '', composer = '') {
   const tpb = 480;
   const uspb = Math.round(60000000 / bpm);
+
+  const textMeta = (type, str) => {
+    const bytes = [...str].map(c => c.charCodeAt(0));
+    return [0x00, 0xFF, type, ...varlen(bytes.length), ...bytes];
+  };
 
   const tr = [
     // tempo
     0x00, 0xFF, 0x51, 0x03, (uspb>>16)&0xFF, (uspb>>8)&0xFF, uspb&0xFF,
+    // track name (title)
+    ...(title    ? textMeta(0x03, title)    : []),
+    // composer as text event
+    ...(composer ? textMeta(0x01, 'Composer: ' + composer) : []),
     // program: piano
     0x00, 0xC0, 0x00
   ];
@@ -556,12 +829,15 @@ function buildMidi(notes, bpm) {
 function dlMidi(key) {
   const state = key==='k' ? kState : key==='r' ? rState : gState;
   if (!state) return;
-  const bpm  = key==='g' ? 100 : 80;
-  const name = key==='k' ? 'kirnberger' : key==='r' ? 'riepel' : 'galeazzi';
-  const midi = buildMidi(state.notes, bpm);
+  const bpm      = key==='g' ? 100 : 80;
+  const title    = (document.getElementById(key+'-title')?.value    || '').trim();
+  const composer = (document.getElementById(key+'-composer')?.value || '').trim();
+  const filename = (title || (key==='k' ? 'kirnberger' : key==='r' ? 'riepel' : 'galeazzi'))
+                    .replace(/[^a-zA-Z0-9 _-]/g, '').trim();
+  const midi = buildMidi(state.notes, bpm, title, composer);
   const a    = Object.assign(document.createElement('a'), {
     href: URL.createObjectURL(new Blob([midi], {type:'audio/midi'})),
-    download: name + '.mid'
+    download: filename + '.mid'
   });
   a.click();
   URL.revokeObjectURL(a.href);
