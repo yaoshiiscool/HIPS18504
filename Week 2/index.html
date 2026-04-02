@@ -109,6 +109,15 @@ label { font-size: 0.82rem; color: #aaa; display: block; margin-bottom: 0.25rem;
 }
 .auth-input:focus { outline: none; border-color: #5b6af0; }
 
+/* INSTRUMENT SELECTOR */
+.instrument-row { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.75rem; }
+.instrument-row label { margin: 0; font-size: 0.82rem; color: #aaa; white-space: nowrap; }
+.instrument-select {
+  background: #16161a; border: 1px solid #333; color: #e8e8ea;
+  padding: 0.35rem 0.65rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer;
+}
+.instrument-select:focus { outline: none; border-color: #5b6af0; }
+
 .status { font-size: 0.82rem; color: #666; margin-top: 0.5rem; min-height: 1.1em; }
 
 /* FRAGMENT REFERENCE TABLE */
@@ -211,6 +220,16 @@ label { font-size: 0.82rem; color: #aaa; display: block; margin-bottom: 0.25rem;
   <div id="kc" class="hidden">
     <button class="btn btn-secondary" onclick="playState('k')">▶ Play</button>
     <button class="btn btn-secondary" onclick="dlMidi('k')">↓ Download MIDI</button>
+    <div class="instrument-row">
+      <label>Instrument</label>
+      <select id="k-instrument" class="instrument-select">
+        <option value="harpsichord">Harpsichord</option>
+        <option value="piano">Piano</option>
+        <option value="flute">Flute</option>
+        <option value="organ">Organ</option>
+        <option value="strings">Strings</option>
+      </select>
+    </div>
     <div class="authorship">
       <div class="auth-field">
         <label>Title</label>
@@ -259,6 +278,16 @@ label { font-size: 0.82rem; color: #aaa; display: block; margin-bottom: 0.25rem;
   <div id="rc" class="hidden">
     <button class="btn btn-secondary" onclick="playState('r')">▶ Play</button>
     <button class="btn btn-secondary" onclick="dlMidi('r')">↓ Download MIDI</button>
+    <div class="instrument-row">
+      <label>Instrument</label>
+      <select id="r-instrument" class="instrument-select">
+        <option value="harpsichord">Harpsichord</option>
+        <option value="piano">Piano</option>
+        <option value="flute">Flute</option>
+        <option value="organ">Organ</option>
+        <option value="strings">Strings</option>
+      </select>
+    </div>
     <div class="authorship">
       <div class="auth-field">
         <label>Title</label>
@@ -320,6 +349,16 @@ label { font-size: 0.82rem; color: #aaa; display: block; margin-bottom: 0.25rem;
   <div id="gc" class="hidden">
     <button class="btn btn-secondary" onclick="playState('g')">▶ Play</button>
     <button class="btn btn-secondary" onclick="dlMidi('g')">↓ Download MIDI</button>
+    <div class="instrument-row">
+      <label>Instrument</label>
+      <select id="g-instrument" class="instrument-select">
+        <option value="harpsichord">Harpsichord</option>
+        <option value="piano">Piano</option>
+        <option value="flute">Flute</option>
+        <option value="organ">Organ</option>
+        <option value="strings">Strings</option>
+      </select>
+    </div>
     <div class="authorship">
       <div class="auth-field">
         <label>Title</label>
@@ -541,11 +580,7 @@ async function playFrag(mi, fi, btn) {
 
   await Tone.start();
 
-  const synth = new Tone.Synth({
-    oscillator: { type: 'triangle' },
-    envelope: { attack: 0.01, decay: 0.3, sustain: 0.25, release: 1.2 }
-  }).toDestination();
-
+  const synth = makeSynth(document.getElementById('k-instrument')?.value || 'piano');
   activeFragSynth = synth;
   Tone.Transport.bpm.value = 80;
 
@@ -774,11 +809,7 @@ async function playRVariant(type, vi, btn) {
 
   await Tone.start();
 
-  const synth = new Tone.Synth({
-    oscillator: { type: 'triangle' },
-    envelope: { attack: 0.01, decay: 0.3, sustain: 0.25, release: 1.2 }
-  }).toDestination();
-
+  const synth = makeSynth(document.getElementById('r-instrument')?.value || 'piano');
   activeRFragSynth = synth;
   Tone.Transport.bpm.value = 80;
 
@@ -899,6 +930,34 @@ function show(id) { document.getElementById(id).classList.remove('hidden'); }
 // ─────────────────────────────────────────
 // AUDIO (Tone.js)
 // ─────────────────────────────────────────
+
+function makeSynth(name) {
+  switch (name) {
+    case 'harpsichord':
+      return new Tone.PluckSynth({ attackNoise: 1, dampening: 4000, resonance: 0.96 }).toDestination();
+    case 'flute':
+      return new Tone.Synth({
+        oscillator: { type: 'sine' },
+        envelope: { attack: 0.08, decay: 0.05, sustain: 0.9, release: 0.8 }
+      }).toDestination();
+    case 'organ':
+      return new Tone.Synth({
+        oscillator: { type: 'square' },
+        envelope: { attack: 0.01, decay: 0.0, sustain: 1.0, release: 0.06 }
+      }).toDestination();
+    case 'strings':
+      return new Tone.Synth({
+        oscillator: { type: 'sawtooth' },
+        envelope: { attack: 0.28, decay: 0.1, sustain: 0.85, release: 1.6 }
+      }).toDestination();
+    default: // piano
+      return new Tone.Synth({
+        oscillator: { type: 'triangle' },
+        envelope: { attack: 0.005, decay: 0.5, sustain: 0.1, release: 1.5 }
+      }).toDestination();
+  }
+}
+
 let activePart = null;
 
 function stopAll() {
@@ -918,10 +977,8 @@ async function playState(key) {
 
   await Tone.start();
 
-  const synth = new Tone.Synth({
-    oscillator: { type: 'triangle' },
-    envelope: { attack: 0.01, decay: 0.3, sustain: 0.25, release: 1.2 }
-  }).toDestination();
+  const instrument = document.getElementById(key + '-instrument')?.value || 'piano';
+  const synth = makeSynth(instrument);
 
   const bpm = key === 'g' ? 100 : 80;
   Tone.Transport.bpm.value = bpm;
