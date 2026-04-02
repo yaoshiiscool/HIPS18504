@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Week 2 — Ars Combinatoria</title>
+<script src="https://cdn.jsdelivr.net/npm/abcjs@6.2.3/dist/abcjs-basic-min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #0f0f11;
+  color: #e8e8ea;
+  min-height: 100vh;
+  padding: 2.5rem 1.5rem;
+}
+.screen { max-width: 820px; margin: 0 auto; }
+.hidden { display: none !important; }
+h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; color: #fff; }
+h2 { font-size: 1.15rem; font-weight: 600; color: #fff; }
+h3 { font-size: 0.95rem; font-weight: 600; color: #fff; }
+p  { color: #888; line-height: 1.5; margin-top: 0.4rem; }
+.tag {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #5b6af0; margin-bottom: 0.4rem;
+}
+.back { color: #5b6af0; text-decoration: none; font-size: 0.85rem; display: inline-block; margin-bottom: 1.5rem; }
+.back:hover { text-decoration: underline; }
+hr { border: none; border-top: 1px solid #222226; margin: 1.5rem 0; }
+
+/* METHOD GRID */
+.method-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1rem; margin-top: 2rem; }
+.method-card {
+  background: #16161a; border: 1px solid #252529; border-radius: 12px;
+  padding: 1.4rem 1.5rem; cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.method-card:hover { border-color: #5b6af0; transform: translateY(-2px); }
+
+/* DICE */
+.dice-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin: 1.2rem 0; }
+.dice-cell {
+  background: #16161a; border: 1px solid #252529; border-radius: 8px;
+  padding: 0.75rem; text-align: center;
+}
+.dice-cell .dlabel { font-size: 0.65rem; color: #666; margin-bottom: 0.3rem; }
+.dice-cell .dval { font-size: 1.6rem; font-weight: 700; color: #fff; min-height: 1.9rem; }
+
+/* BUTTONS */
+.btn {
+  display: inline-block; padding: 0.55rem 1.1rem; border-radius: 8px; border: none;
+  cursor: pointer; font-size: 0.88rem; font-weight: 600;
+  transition: opacity 0.15s; margin-right: 0.4rem; margin-top: 0.4rem;
+}
+.btn:hover { opacity: 0.82; }
+.btn-primary { background: #5b6af0; color: #fff; }
+.btn-secondary { background: #252529; color: #e8e8ea; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* NOTATION */
+.notation-box {
+  background: #fff; border-radius: 8px; padding: 0.75rem 1rem;
+  margin: 1.2rem 0; min-height: 100px;
+}
+.notation-box svg { max-width: 100%; }
+
+/* CHOICE CARDS (Riepel) */
+.choice-row { display: flex; gap: 0.75rem; margin: 0.75rem 0; flex-wrap: wrap; }
+.choice-card {
+  flex: 1; min-width: 160px; background: #16161a; border: 2px solid #252529;
+  border-radius: 10px; padding: 1rem 1.1rem; cursor: pointer;
+  transition: border-color 0.2s;
+}
+.choice-card:hover { border-color: #888; }
+.choice-card.selected { border-color: #5b6af0; }
+.choice-card p { font-size: 0.78rem; }
+
+/* NOTE CARDS (Galeazzi) */
+.card-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0 1rem; }
+.ncard {
+  padding: 0.45rem 0.85rem; border-radius: 6px; border: 2px solid #252529;
+  cursor: pointer; font-weight: 700; font-size: 1rem;
+  background: #16161a; color: #e8e8ea; transition: all 0.12s; user-select: none;
+}
+.ncard:hover { border-color: #888; }
+.ncard.on  { border-color: #5b6af0; background: #1c1c30; color: #fff; }
+.ncard.off { opacity: 0.3; cursor: not-allowed; }
+.ncard.rsel { border-color: #5b6af0; background: #1c1c30; color: #fff; }
+
+label { font-size: 0.82rem; color: #aaa; display: block; margin-bottom: 0.25rem; }
+.status { font-size: 0.82rem; color: #666; margin-top: 0.5rem; min-height: 1.1em; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ HOME ══════════════ -->
+<div id="s-home" class="screen">
+  <a href="../index.html" class="back">← HIPS 18504</a>
+  <div class="tag">Week 2</div>
+  <h1>Ars Combinatoria</h1>
+  <p>Chance and Choice in Eighteenth-Century Music — select a composer's method below.</p>
+  <div class="method-grid">
+    <div class="method-card" onclick="goto('kirnberger')">
+      <div class="tag">Kirnberger · 1757</div>
+      <h2>Dice Game</h2>
+      <p>Roll 2d6 four times. Each sum selects a pre-composed melodic fragment over a fixed harmonic plan.</p>
+    </div>
+    <div class="method-card" onclick="goto('riepel')">
+      <div class="tag">Riepel · 1755</div>
+      <h2>Monte · Ponte · Fonte</h2>
+      <p>A fixed opening phrase is followed by your chosen continuation type.</p>
+    </div>
+    <div class="method-card" onclick="goto('galeazzi')">
+      <div class="tag">Galeazzi · 1791</div>
+      <h2>Card Draw</h2>
+      <p>Draw a tonic card, three scale cards, and a rhythm to invent a melodic figure.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ KIRNBERGER ══════════════ -->
+<div id="s-kirnberger" class="screen hidden">
+  <a href="#" class="back" onclick="goto('home');return false">← Back to Week 2</a>
+  <div class="tag">Kirnberger · 1757</div>
+  <h1>Dice Game</h1>
+  <p>Roll 2 dice for each of 4 measures. The sum (2–12) selects one of 11 pre-composed melodic fragments over a fixed harmonic plan: I – V – I – I in C major.</p>
+  <hr>
+  <div class="dice-row">
+    <div class="dice-cell"><div class="dlabel">Measure 1 &nbsp;(I)</div><div class="dval" id="kd1">—</div></div>
+    <div class="dice-cell"><div class="dlabel">Measure 2 &nbsp;(V)</div><div class="dval" id="kd2">—</div></div>
+    <div class="dice-cell"><div class="dlabel">Measure 3 &nbsp;(I)</div><div class="dval" id="kd3">—</div></div>
+    <div class="dice-cell"><div class="dlabel">Measure 4 &nbsp;(I)</div><div class="dval" id="kd4">—</div></div>
+  </div>
+  <button class="btn btn-primary" onclick="rollKirnberger()">Roll Dice</button>
+  <div id="kn" class="notation-box hidden"></div>
+  <div id="kc" class="hidden">
+    <button class="btn btn-secondary" onclick="playState('k')">▶ Play</button>
+    <button class="btn btn-secondary" onclick="dlMidi('k')">↓ Download MIDI</button>
+  </div>
+  <div class="status" id="ks"></div>
+</div>
+
+<!-- ══════════════ RIEPEL ══════════════ -->
+<div id="s-riepel" class="screen hidden">
+  <a href="#" class="back" onclick="goto('home');return false">← Back to Week 2</a>
+  <div class="tag">Riepel · 1755</div>
+  <h1>Monte · Ponte · Fonte</h1>
+  <p>A fixed opening phrase (bars 1–2) closes on the dominant. Choose one of Riepel's three continuation types for bars 3–4.</p>
+  <hr>
+  <label>Choose a continuation:</label>
+  <div class="choice-row">
+    <div class="choice-card" id="rc-monte" onclick="pickRiepel('monte')">
+      <h3>Monte</h3>
+      <p>The phrase rises — a sequential progression moving upward by step.</p>
+    </div>
+    <div class="choice-card" id="rc-ponte" onclick="pickRiepel('ponte')">
+      <h3>Ponte</h3>
+      <p>A bridge on the dominant — the melody holds around G.</p>
+    </div>
+    <div class="choice-card" id="rc-fonte" onclick="pickRiepel('fonte')">
+      <h3>Fonte</h3>
+      <p>The phrase falls — a sequential progression moving downward by step.</p>
+    </div>
+  </div>
+  <div id="rn" class="notation-box hidden"></div>
+  <div id="rc" class="hidden">
+    <button class="btn btn-secondary" onclick="playState('r')">▶ Play</button>
+    <button class="btn btn-secondary" onclick="dlMidi('r')">↓ Download MIDI</button>
+  </div>
+  <div class="status" id="rs"></div>
+</div>
+
+<!-- ══════════════ GALEAZZI ══════════════ -->
+<div id="s-galeazzi" class="screen hidden">
+  <a href="#" class="back" onclick="goto('home');return false">← Back to Week 2</a>
+  <div class="tag">Galeazzi · 1791</div>
+  <h1>Card Draw</h1>
+  <p>Draw one card from the tonic triad, then three from the scale. Choose a rhythm. The figure is built from your chosen notes in that order and repeated over 4 bars.</p>
+  <hr>
+
+  <label>Step 1 — Draw one tonic card (C, E, or G):</label>
+  <div class="card-row" id="tp">
+    <div class="ncard" onclick="gPickTonic('C',this)">C</div>
+    <div class="ncard" onclick="gPickTonic('E',this)">E</div>
+    <div class="ncard" onclick="gPickTonic('G',this)">G</div>
+  </div>
+
+  <label>Step 2 — Draw 3 scale cards (any order):</label>
+  <div class="card-row" id="sp">
+    <div class="ncard" onclick="gPickScale('C',this)">C</div>
+    <div class="ncard" onclick="gPickScale('D',this)">D</div>
+    <div class="ncard" onclick="gPickScale('E',this)">E</div>
+    <div class="ncard" onclick="gPickScale('F',this)">F</div>
+    <div class="ncard" onclick="gPickScale('G',this)">G</div>
+    <div class="ncard" onclick="gPickScale('A',this)">A</div>
+    <div class="ncard" onclick="gPickScale('B',this)">B</div>
+  </div>
+
+  <label>Step 3 — Choose a rhythm:</label>
+  <div class="card-row" id="rp">
+    <div class="ncard" onclick="gPickRhythm('even',this)">♩ ♩ ♩ ♩</div>
+    <div class="ncard" onclick="gPickRhythm('march',this)">♩. ♪ ♩ ♩</div>
+    <div class="ncard" onclick="gPickRhythm('upbeat',this)">♪ ♩ ♩ ♩.</div>
+    <div class="ncard" onclick="gPickRhythm('long',this)">𝅗𝅥 ♩ ♪ ♪</div>
+  </div>
+
+  <button class="btn btn-primary" onclick="buildGaleazzi()">Generate</button>
+  <div id="gn" class="notation-box hidden"></div>
+  <div id="gc" class="hidden">
+    <button class="btn btn-secondary" onclick="playState('g')">▶ Play</button>
+    <button class="btn btn-secondary" onclick="dlMidi('g')">↓ Download MIDI</button>
+  </div>
+  <div class="status" id="gs"></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────
+function goto(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById('s-' + id).classList.remove('hidden');
+  stopAll();
+}
+
+// ─────────────────────────────────────────
+// MUSIC HELPERS
+// ─────────────────────────────────────────
+
+// MIDI pitch table (ABC note → MIDI number, middle C = 60)
+const MP = {
+  'G,':55,'A,':57,'B,':59,
+  'C':60,'D':62,'E':64,'F':65,'G':67,'A':69,'B':71,
+  'c':72,'d':74,'e':76,'f':77,'g':79,'a':81,'b':83
+};
+
+// Build a fragment from pairs of [abcNote, abcLen]
+// abcLen in L:1/8 units: 1=eighth, 2=quarter, 3=dotted-quarter, 4=half, 6=dotted-half
+function F(pairs) {
+  const abc   = pairs.map(([n,l]) => n + (l > 1 ? l : '')).join(' ');
+  const notes = pairs.map(([n,l]) => ({ pitch: MP[n], dur: l * 0.5 })); // dur in quarter-note beats
+  return { abc, notes };
+}
+
+// ─────────────────────────────────────────
+// KIRNBERGER — 11 fragments × 4 measures
+// 3/4 time, L:1/8 → 6 units per measure
+// Harmony: I  |  V  |  I  |  I
+// ─────────────────────────────────────────
+const K = [
+  // Measure 1 — I chord (C, E, G)  — dice sums 2–12 at index [sum-2]
+  [
+    F([['C',2],['E',2],['G',2]]),
+    F([['E',2],['G',1],['E',1],['C',2]]),
+    F([['C',1],['E',1],['G',1],['E',1],['C',2]]),
+    F([['G,',2],['C',2],['E',2]]),
+    F([['c',2],['e',1],['G',1],['E',2]]),
+    F([['G',2],['E',2],['C',2]]),
+    F([['C',1],['E',1],['G',2],['c',2]]),
+    F([['c',2],['G',2],['E',2]]),
+    F([['E',1],['G',1],['c',1],['G',1],['E',2]]),
+    F([['C',4],['E',1],['G',1]]),
+    F([['c',1],['G',1],['E',1],['C',1],['c',2]]),
+  ],
+  // Measure 2 — V chord (G, B, D)
+  [
+    F([['G',2],['B',2],['d',2]]),
+    F([['B',2],['d',1],['B',1],['G',2]]),
+    F([['G',1],['B',1],['d',1],['B',1],['G',2]]),
+    F([['D',2],['G',2],['B',2]]),
+    F([['d',2],['f',1],['d',1],['B',2]]),
+    F([['d',2],['B',2],['G',2]]),
+    F([['G',1],['B',1],['d',2],['g',2]]),
+    F([['d',2],['g',2],['d',2]]),
+    F([['B',1],['d',1],['g',1],['d',1],['B',2]]),
+    F([['G',4],['B',1],['d',1]]),
+    F([['d',1],['B',1],['G',1],['D',1],['G',2]]),
+  ],
+  // Measure 3 — I chord again
+  [
+    F([['E',2],['G',2],['c',2]]),
+    F([['c',2],['e',1],['c',1],['G',2]]),
+    F([['G',1],['c',1],['e',1],['c',1],['G',2]]),
+    F([['C',2],['E',2],['c',2]]),
+    F([['e',2],['g',1],['e',1],['c',2]]),
+    F([['c',2],['G',2],['E',2]]),
+    F([['E',1],['G',1],['c',2],['e',2]]),
+    F([['g',2],['e',2],['c',2]]),
+    F([['c',1],['e',1],['g',1],['e',1],['c',2]]),
+    F([['E',4],['G',1],['c',1]]),
+    F([['e',1],['c',1],['G',1],['E',1],['c',2]]),
+  ],
+  // Measure 4 — I, cadential ending (all end on C or c)
+  [
+    F([['E',2],['C',4]]),
+    F([['G',2],['E',2],['C',2]]),
+    F([['G',1],['E',1],['C',4]]),
+    F([['c',2],['G',2],['C',2]]),
+    F([['e',2],['c',2],['C',2]]),
+    F([['G',3],['E',1],['C',2]]),
+    F([['c',1],['G',1],['E',1],['C',1],['C',2]]),
+    F([['G',2],['C',4]]),
+    F([['E',1],['G',1],['E',1],['C',3]]),
+    F([['c',4],['C',2]]),
+    F([['e',1],['c',1],['G',1],['E',1],['C',2]]),
+  ]
+];
+
+let kState = null;
+
+function rollKirnberger() {
+  const dice = [0,1,2,3].map(() => {
+    return Math.ceil(Math.random()*6) + Math.ceil(Math.random()*6);
+  });
+  dice.forEach((s,i) => { document.getElementById('kd'+(i+1)).textContent = s; });
+
+  const frags = dice.map((s,i) => K[i][s-2]);
+  const abc = `X:1\nT:Kirnberger Polonaise\nM:3/4\nL:1/8\nQ:1/4=80\nK:C\n| ${frags.map(f=>f.abc).join(' | ')} |`;
+  const notes = frags.flatMap(f => f.notes);
+
+  kState = { abc, notes };
+  render('kn', abc);
+  show('kn'); show('kc');
+  document.getElementById('ks').textContent = '';
+}
+
+// ─────────────────────────────────────────
+// RIEPEL — Monte / Ponte / Fonte
+// 3/4, C major, L:1/8
+// Fixed opening (bars 1–2), choice for bars 3–4
+// ─────────────────────────────────────────
+const R_OPEN = [
+  F([['C',2],['D',1],['E',1],['G',2]]),   // bar 1  I: C-D-E-G
+  F([['G',2],['F',1],['E',1],['D',2]]),   // bar 2  V: half cadence on D
+];
+const R_CONT = {
+  monte: [
+    F([['D',2],['E',1],['F',1],['A',2]]),  // bar 3: phrase rises a step
+    F([['A',2],['G',1],['F',1],['E',2]]),  // bar 4: settling back
+  ],
+  ponte: [
+    F([['G',2],['A',1],['G',1],['B',2]]),  // bar 3: dominant pedal
+    F([['B',2],['A',1],['G',2],['G',1]]),  // bar 4: dominant pedal continues
+  ],
+  fonte: [
+    F([['B',2],['c',1],['B',1],['G',2]]),  // bar 3: phrase falls (Bb area implied, but here B natural)
+    F([['E',2],['D',1],['C',1],['C',2]]),  // bar 4: resolution to tonic
+  ],
+};
+
+let rState = null;
+
+function pickRiepel(type) {
+  ['monte','ponte','fonte'].forEach(t =>
+    document.getElementById('rc-'+t).classList.toggle('selected', t===type));
+
+  const all = [...R_OPEN, ...R_CONT[type]];
+  const abc = `X:1\nT:Riepel — ${type.charAt(0).toUpperCase()+type.slice(1)}\nM:3/4\nL:1/8\nQ:1/4=80\nK:C\n| ${all.map(f=>f.abc).join(' | ')} |`;
+  const notes = all.flatMap(f => f.notes);
+
+  rState = { abc, notes };
+  render('rn', abc);
+  show('rn'); show('rc');
+  document.getElementById('rs').textContent = '';
+}
+
+// ─────────────────────────────────────────
+// GALEAZZI — Card Draw
+// 4/4, C major, L:1/8 → 8 units per measure
+// Tonic card + 3 scale cards + rhythm → 4-bar figure
+// ─────────────────────────────────────────
+const RHYTHMS = {
+  even:   [2,2,2,2],        // ♩ ♩ ♩ ♩         = 8
+  march:  [3,1,2,2],        // ♩. ♪ ♩ ♩         = 8
+  upbeat: [1,2,2,3],        // ♪ ♩ ♩ ♩.         = 8
+  long:   [4,2,1,1],        // 𝅗𝅥 ♩ ♪ ♪          = 8
+};
+
+// MIDI pitches for Galeazzi (all in C4–B4 octave)
+const GM = { C:60, D:62, E:64, F:65, G:67, A:69, B:71 };
+
+let gTonic = null, gScale = [], gRhythm = null;
+
+function gPickTonic(n, el) {
+  gTonic = n;
+  document.querySelectorAll('#tp .ncard').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+}
+
+function gPickScale(n, el) {
+  if (el.classList.contains('off')) return;
+  if (gScale.includes(n)) {
+    gScale = gScale.filter(x => x !== n);
+    el.classList.remove('on');
+  } else if (gScale.length < 3) {
+    gScale.push(n);
+    el.classList.add('on');
+  }
+  const full = gScale.length >= 3;
+  document.querySelectorAll('#sp .ncard').forEach(c => {
+    if (full && !gScale.includes(c.textContent.trim())) c.classList.add('off');
+    else c.classList.remove('off');
+  });
+}
+
+function gPickRhythm(name, el) {
+  gRhythm = name;
+  document.querySelectorAll('#rp .ncard').forEach(c => c.classList.remove('rsel'));
+  el.classList.add('rsel');
+}
+
+function buildGaleazzi() {
+  const st = document.getElementById('gs');
+  if (!gTonic)           { st.textContent = 'Pick a tonic card first.'; return; }
+  if (gScale.length < 3) { st.textContent = 'Pick 3 scale cards.'; return; }
+  if (!gRhythm)          { st.textContent = 'Choose a rhythm.'; return; }
+  st.textContent = '';
+
+  const figure = [gTonic, ...gScale];   // 4 notes
+  const durs   = RHYTHMS[gRhythm];      // 4 durations summing to 8
+
+  // Build one ABC measure from notes rotated by offset
+  function measure(offset) {
+    return figure.map((_, i) => {
+      const n = figure[(i + offset) % 4];
+      const l = durs[i];
+      return { abcNote: n + (l>1?l:''), pitch: GM[n], dur: l*0.5 };
+    });
+  }
+
+  // 4 measures: fig, fig rotated by 1, fig again, closing (end on tonic)
+  const m1 = measure(0);
+  const m2 = measure(1);
+  const m3 = measure(0);
+  // Closing measure: last note forced to tonic
+  const m4 = measure(2).map((ev, i) =>
+    i === 3 ? { abcNote: gTonic + (durs[3]>1?durs[3]:''), pitch: GM[gTonic], dur: durs[3]*0.5 } : ev
+  );
+
+  const toAbc = m => m.map(e => e.abcNote).join(' ');
+  const abc = `X:1\nT:Galeazzi Figure\nM:4/4\nL:1/8\nQ:1/4=100\nK:C\n| ${[m1,m2,m3,m4].map(toAbc).join(' | ')} |`;
+  const notes = [m1,m2,m3,m4].flatMap(m => m.map(e => ({ pitch: e.pitch, dur: e.dur })));
+
+  gState = { abc, notes };
+  render('gn', abc);
+  show('gn'); show('gc');
+}
+
+let gState = null;
+
+// ─────────────────────────────────────────
+// NOTATION (ABCJS)
+// ─────────────────────────────────────────
+function render(divId, abc) {
+  ABCJS.renderAbc(divId, abc, { responsive: 'resize', paddingleft: 10, paddingright: 10 });
+}
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+
+// ─────────────────────────────────────────
+// AUDIO (Tone.js)
+// ─────────────────────────────────────────
+let activePart = null;
+
+function stopAll() {
+  if (activePart) { try { activePart.stop(); activePart.dispose(); } catch(e){} activePart = null; }
+  Tone.Transport.stop();
+  Tone.Transport.cancel();
+}
+
+async function playState(key) {
+  stopAll();
+  const state = key==='k' ? kState : key==='r' ? rState : gState;
+  if (!state) return;
+
+  await Tone.start();
+
+  const synth = new Tone.Synth({
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 0.01, decay: 0.3, sustain: 0.25, release: 1.2 }
+  }).toDestination();
+
+  const bpm = key === 'g' ? 100 : 80;
+  Tone.Transport.bpm.value = bpm;
+
+  let t = 0;
+  state.notes.forEach(({ pitch, dur }) => {
+    // dur is in quarter-note beats
+    Tone.Transport.schedule(time => {
+      synth.triggerAttackRelease(
+        Tone.Frequency(pitch, 'midi').toNote(),
+        dur * (60 / bpm),
+        time
+      );
+    }, t * (60 / bpm));
+    t += dur;
+  });
+
+  const totalSec = t * (60 / bpm);
+  Tone.Transport.schedule(time => {
+    Tone.Transport.stop();
+    synth.dispose();
+    activePart = null;
+  }, totalSec + 0.2);
+
+  activePart = synth;
+  Tone.Transport.start();
+}
+
+// ─────────────────────────────────────────
+// MIDI EXPORT
+// ─────────────────────────────────────────
+function varlen(n) {
+  const b = [n & 0x7F]; n >>= 7;
+  while (n > 0) { b.unshift((n & 0x7F) | 0x80); n >>= 7; }
+  return b;
+}
+
+function buildMidi(notes, bpm) {
+  const tpb = 480;
+  const uspb = Math.round(60000000 / bpm);
+
+  const tr = [
+    // tempo
+    0x00, 0xFF, 0x51, 0x03, (uspb>>16)&0xFF, (uspb>>8)&0xFF, uspb&0xFF,
+    // program: piano
+    0x00, 0xC0, 0x00
+  ];
+
+  const evs = [];
+  let tick = 0;
+  for (const { pitch, dur } of notes) {
+    const len = Math.round(dur * tpb);
+    evs.push({ t: tick,       d: [0x90, pitch, 80] });
+    evs.push({ t: tick+len-1, d: [0x80, pitch, 0]  });
+    tick += len;
+  }
+  evs.sort((a, b) => a.t - b.t || (a.d[0]===0x80 ? -1 : 1));
+
+  let cur = 0;
+  for (const ev of evs) {
+    tr.push(...varlen(ev.t - cur));
+    tr.push(...ev.d);
+    cur = ev.t;
+  }
+  tr.push(0x00, 0xFF, 0x2F, 0x00);
+
+  const tl = tr.length;
+  return new Uint8Array([
+    0x4D,0x54,0x68,0x64, 0,0,0,6, 0,0, 0,1, (tpb>>8)&0xFF,tpb&0xFF,
+    0x4D,0x54,0x72,0x6B, (tl>>24)&0xFF,(tl>>16)&0xFF,(tl>>8)&0xFF,tl&0xFF,
+    ...tr
+  ]);
+}
+
+function dlMidi(key) {
+  const state = key==='k' ? kState : key==='r' ? rState : gState;
+  if (!state) return;
+  const bpm  = key==='g' ? 100 : 80;
+  const name = key==='k' ? 'kirnberger' : key==='r' ? 'riepel' : 'galeazzi';
+  const midi = buildMidi(state.notes, bpm);
+  const a    = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([midi], {type:'audio/midi'})),
+    download: name + '.mid'
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+</script>
+</body>
+</html>
