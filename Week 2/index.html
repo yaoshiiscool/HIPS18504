@@ -125,15 +125,14 @@ label { font-size: 0.82rem; color: #aaa; display: block; margin-bottom: 0.25rem;
 }
 .ref-measure-label:first-child { margin-top: 0; }
 .ref-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.6rem;
 }
 .ref-cell {
   background: #16161a; border: 1px solid #252529; border-radius: 8px;
   padding: 0.5rem 0.6rem 0.4rem;
-  display: flex; flex-direction: column; align-items: stretch; gap: 0.3rem;
-  overflow: hidden;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0.3rem;
 }
 .ref-cell.active-frag { border-color: #5b6af0; }
 .ref-dice-label {
@@ -142,11 +141,11 @@ label { font-size: 0.82rem; color: #aaa; display: block; margin-bottom: 0.25rem;
 }
 .ref-notation {
   background: #fff; border-radius: 4px;
-  width: 100%; overflow: hidden; opacity: 1;
+  display: inline-block; opacity: 1;
 }
 .ref-notation svg {
   display: block !important;
-  width: 100% !important;
+  width: auto !important;
   height: auto !important;
   opacity: 1;
 }
@@ -276,6 +275,10 @@ label { font-size: 0.82rem; color: #aaa; display: block; margin-bottom: 0.25rem;
     </div>
   </div>
   <div class="status" id="rs"></div>
+
+  <hr>
+  <button class="ref-toggle" onclick="toggleRRefTable()">▾ Variant Reference Table</button>
+  <div id="rref-wrap" class="ref-section hidden"></div>
 </div>
 
 <!-- ══════════════ GALEAZZI ══════════════ -->
@@ -594,18 +597,59 @@ const R_OPEN = [
   F([['C',2],['D',1],['E',1],['G',2]]),   // bar 1  I: C-D-E-G
   F([['G',2],['F',1],['E',1],['D',2]]),   // bar 2  V: half cadence on D
 ];
+// Each type holds an array of variants; each variant is [bar3, bar4].
+// pickRiepel selects one variant at random each time.
 const R_CONT = {
   monte: [
-    F([['D',2],['E',1],['F',1],['A',2]]),  // bar 3: phrase rises a step
-    F([['A',2],['G',1],['F',1],['E',2]]),  // bar 4: settling back
+    // variant 1: rises by step D→E, settling on E
+    [
+      F([['D',2],['E',1],['F',1],['A',2]]),
+      F([['A',2],['G',1],['F',1],['E',2]]),
+    ],
+    // variant 2: rises more steeply via E→F sequence
+    [
+      F([['E',2],['F',1],['G',1],['B',2]]),
+      F([['B',2],['A',1],['G',1],['F',2]]),
+    ],
+    // variant 3: stepwise ascent with a leap at the top
+    [
+      F([['D',2],['E',2],['F',2]]),
+      F([['c',2],['B',1],['A',1],['G',2]]),
+    ],
   ],
   ponte: [
-    F([['G',2],['A',1],['G',1],['B',2]]),  // bar 3: dominant pedal
-    F([['B',2],['A',1],['G',2],['G',1]]),  // bar 4: dominant pedal continues
+    // variant 1: neighbour-note figuration around G
+    [
+      F([['G',2],['A',1],['G',1],['B',2]]),
+      F([['B',2],['A',1],['G',2],['G',1]]),
+    ],
+    // variant 2: sustained dominant with arpeggiation G-B-D
+    [
+      F([['G',2],['B',2],['d',2]]),
+      F([['d',2],['B',2],['G',2]]),
+    ],
+    // variant 3: oscillating dominant (G pedal with upper neighbour)
+    [
+      F([['G',2],['A',1],['B',1],['A',2]]),
+      F([['G',2],['A',1],['G',1],['G',2]]),
+    ],
   ],
   fonte: [
-    F([['B',2],['c',1],['B',1],['G',2]]),  // bar 3: phrase falls (Bb area implied, but here B natural)
-    F([['E',2],['D',1],['C',1],['C',2]]),  // bar 4: resolution to tonic
+    // variant 1: falls by step B→A, resolves to C
+    [
+      F([['B',2],['c',1],['B',1],['G',2]]),
+      F([['E',2],['D',1],['C',1],['C',2]]),
+    ],
+    // variant 2: descending thirds G→E, E→C
+    [
+      F([['G',2],['F',1],['E',1],['D',2]]),
+      F([['E',2],['D',1],['C',1],['C',2]]),
+    ],
+    // variant 3: falling sequence with chromatic colouring
+    [
+      F([['B',2],['A',1],['G',1],['F',2]]),
+      F([['E',2],['D',1],['C',2],['C',1]]),
+    ],
   ],
 };
 
@@ -615,7 +659,9 @@ function pickRiepel(type) {
   ['monte','ponte','fonte'].forEach(t =>
     document.getElementById('rc-'+t).classList.toggle('selected', t===type));
 
-  const all = [...R_OPEN, ...R_CONT[type]];
+  const variants = R_CONT[type];
+  const cont = variants[Math.floor(Math.random() * variants.length)];
+  const all = [...R_OPEN, ...cont];
   const abc = `X:1\nT:Riepel — ${type.charAt(0).toUpperCase()+type.slice(1)}\nM:3/4\nL:1/8\nQ:1/4=80\nK:C\n| ${all.map(f=>f.abc).join(' | ')} |`;
   const notes = all.flatMap(f => f.notes);
 
@@ -623,6 +669,139 @@ function pickRiepel(type) {
   render('rn', abc);
   show('rn'); show('rc');
   document.getElementById('rs').textContent = '';
+}
+
+let rRefBuilt = false;
+let rRefOpen  = false;
+let activeRFragBtn   = null;
+let activeRFragSynth = null;
+
+const R_TYPE_LABELS = {
+  monte: 'Monte — rising sequence',
+  ponte: 'Ponte — dominant prolongation',
+  fonte: 'Fonte — falling sequence',
+};
+
+function toggleRRefTable() {
+  rRefOpen = !rRefOpen;
+  const wrap = document.getElementById('rref-wrap');
+  const btn  = wrap.previousElementSibling;
+  if (rRefOpen) {
+    wrap.classList.remove('hidden');
+    btn.textContent = '▴ Variant Reference Table';
+    if (!rRefBuilt) buildRRefTable();
+  } else {
+    wrap.classList.add('hidden');
+    btn.textContent = '▾ Variant Reference Table';
+  }
+}
+
+function buildRRefTable() {
+  const wrap = document.getElementById('rref-wrap');
+  wrap.innerHTML = '';
+
+  ['monte', 'ponte', 'fonte'].forEach(type => {
+    const sectionLabel = document.createElement('div');
+    sectionLabel.className = 'ref-measure-label';
+    sectionLabel.textContent = R_TYPE_LABELS[type];
+    wrap.appendChild(sectionLabel);
+
+    const grid = document.createElement('div');
+    grid.className = 'ref-grid';
+
+    R_CONT[type].forEach((variant, vi) => {
+      const divId = `rref-${type}-${vi}`;
+
+      const cell = document.createElement('div');
+      cell.className = 'ref-cell';
+
+      const diceLabel = document.createElement('div');
+      diceLabel.className = 'ref-dice-label';
+      diceLabel.textContent = `Variant ${vi + 1}`;
+
+      const notDiv = document.createElement('div');
+      notDiv.className = 'ref-notation';
+      notDiv.id = divId;
+
+      const playBtn = document.createElement('button');
+      playBtn.className = 'frag-btn';
+      playBtn.textContent = '▶ Play';
+      playBtn.onclick = () => playRVariant(type, vi, playBtn);
+
+      cell.appendChild(diceLabel);
+      cell.appendChild(notDiv);
+      cell.appendChild(playBtn);
+      grid.appendChild(cell);
+    });
+
+    wrap.appendChild(grid);
+  });
+
+  // Render notation after DOM is populated
+  ['monte', 'ponte', 'fonte'].forEach(type => {
+    R_CONT[type].forEach((variant, vi) => {
+      const divId = `rref-${type}-${vi}`;
+      const all = [...R_OPEN, ...variant];
+      const abc = `X:1\nM:3/4\nL:1/8\nK:C\n| ${all.map(f => f.abc).join(' | ')} |`;
+      ABCJS.renderAbc(divId, abc, { staffwidth: 220, paddingtop: 6, paddingbottom: 6, paddingleft: 8, paddingright: 8, foregroundColor: '#000000' });
+    });
+  });
+
+  rRefBuilt = true;
+}
+
+async function playRVariant(type, vi, btn) {
+  if (activeRFragSynth) {
+    try { activeRFragSynth.dispose(); } catch(e){}
+    activeRFragSynth = null;
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
+  }
+  if (activeRFragBtn && activeRFragBtn !== btn) {
+    activeRFragBtn.textContent = '▶ Play';
+    activeRFragBtn.classList.remove('playing');
+  }
+  if (activeRFragBtn === btn) {
+    btn.textContent = '▶ Play';
+    btn.classList.remove('playing');
+    activeRFragBtn = null;
+    return;
+  }
+
+  activeRFragBtn = btn;
+  btn.textContent = '■ Stop';
+  btn.classList.add('playing');
+
+  await Tone.start();
+
+  const synth = new Tone.Synth({
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 0.01, decay: 0.3, sustain: 0.25, release: 1.2 }
+  }).toDestination();
+
+  activeRFragSynth = synth;
+  Tone.Transport.bpm.value = 80;
+
+  const notes = [...R_OPEN, ...R_CONT[type][vi]].flatMap(f => f.notes);
+  let t = 0;
+  notes.forEach(({ pitch, dur }) => {
+    Tone.Transport.schedule(time => {
+      synth.triggerAttackRelease(Tone.Frequency(pitch, 'midi').toNote(), dur * (60/80), time);
+    }, t * (60/80));
+    t += dur;
+  });
+
+  Tone.Transport.schedule(() => {
+    btn.textContent = '▶ Play';
+    btn.classList.remove('playing');
+    try { synth.dispose(); } catch(e){}
+    activeRFragSynth = null;
+    activeRFragBtn   = null;
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
+  }, t * (60/80) + 0.1);
+
+  Tone.Transport.start();
 }
 
 // ─────────────────────────────────────────
