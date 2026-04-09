@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Week 3 — De Prony's Bureau Simulator</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #0f0f11;
+  color: #e8e8ea;
+  min-height: 100vh;
+  padding: 2.5rem 1.5rem;
+}
+.screen { max-width: 1000px; margin: 0 auto; }
+.hidden { display: none !important; }
+h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; color: #fff; margin-bottom: 0.5rem; }
+h2 { font-size: 1.15rem; font-weight: 600; color: #fff; margin-top: 1.5rem; margin-bottom: 1rem; }
+h3 { font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 0.5rem; }
+p  { color: #888; line-height: 1.5; margin-top: 0.4rem; font-size: 0.9rem; }
+.tag {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #5b6af0; margin-bottom: 0.4rem;
+}
+.back { color: #5b6af0; text-decoration: none; font-size: 0.85rem; display: inline-block; margin-bottom: 1.5rem; }
+.back:hover { text-decoration: underline; cursor: pointer; }
+hr { border: none; border-top: 1px solid #222226; margin: 1.5rem 0; }
+
+/* BUTTONS */
+.btn {
+  display: inline-block; padding: 0.55rem 1.1rem; border-radius: 8px; border: none;
+  cursor: pointer; font-size: 0.88rem; font-weight: 600;
+  transition: opacity 0.15s, background-color 0.15s; margin-right: 0.4rem; margin-top: 0.4rem;
+}
+.btn:hover { opacity: 0.82; }
+.btn-primary { background: #5b6af0; color: #fff; }
+.btn-secondary { background: #252529; color: #e8e8ea; }
+.btn-secondary.active { background: #5b6af0; color: #fff; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* LAYOUT */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.5rem 0; }
+@media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+/* CONTROL PANEL */
+.control-panel {
+  background: #16161a; border: 1px solid #252529; border-radius: 12px;
+  padding: 1.5rem; margin: 1.5rem 0;
+}
+.control-param {
+  margin-bottom: 1.2rem;
+}
+.param-label { font-weight: 600; color: #fff; font-size: 0.9rem; margin-bottom: 0.4rem; display: flex; justify-content: space-between; }
+.param-label .value { color: #5b6af0; font-family: monospace; }
+.slider {
+  width: 100%; height: 6px; border-radius: 3px; background: #252529;
+  outline: none; appearance: none; -webkit-appearance: none;
+  cursor: pointer;
+}
+.slider::-webkit-slider-thumb {
+  appearance: none; -webkit-appearance: none;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #5b6af0; cursor: pointer; transition: background 0.15s;
+}
+.slider::-webkit-slider-thumb:hover { background: #7b8aff; }
+.slider::-moz-range-thumb {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #5b6af0; cursor: pointer; border: none; transition: background 0.15s;
+}
+.slider::-moz-range-thumb:hover { background: #7b8aff; }
+.param-options { display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
+.option-btn {
+  padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid #252529;
+  background: #16161a; color: #aaa; cursor: pointer; font-size: 0.8rem;
+  transition: all 0.15s;
+}
+.option-btn:hover { border-color: #5b6af0; color: #5b6af0; }
+.option-btn.selected { background: #5b6af0; color: #fff; border-color: #5b6af0; }
+
+/* MODE SELECTOR */
+.mode-selector {
+  background: #16161a; border: 1px solid #252529; border-radius: 12px;
+  padding: 1.5rem; margin: 1.5rem 0;
+  text-align: center;
+}
+.mode-buttons { display: flex; gap: 1rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+
+/* SCENARIO SCREEN */
+.scenario-intro {
+  background: #16161a; border-left: 4px solid #5b6af0; border-radius: 8px;
+  padding: 1.5rem; margin: 1rem 0;
+}
+.scenario-intro h3 { color: #5b6af0; margin-top: 0; }
+.scenario-intro .goal { margin: 1rem 0; font-size: 0.95rem; color: #e8e8ea; }
+.scenario-intro .goal strong { color: #fff; }
+
+/* VISUALIZATION */
+.visualization { background: #16161a; border: 1px solid #252529; border-radius: 12px; padding: 1.5rem; margin: 1.5rem 0; }
+
+/* SWIM LANES */
+.swim-container {
+  overflow-x: auto; margin: 1rem 0;
+  background: #000; border-radius: 8px; border: 1px solid #252529;
+  padding: 1rem; min-height: 300px;
+}
+.swim-lanes { display: flex; flex-direction: column; gap: 0.5rem; min-width: 1200px; }
+.swim-lane {
+  display: flex; align-items: center; gap: 0.5rem; min-height: 50px;
+  border-bottom: 1px solid #2a2a2e;
+}
+.swim-lane:last-child { border-bottom: none; }
+.swim-label {
+  font-weight: 700; font-size: 0.8rem; color: #888; width: 120px; flex-shrink: 0;
+  white-space: nowrap; text-align: right; padding-right: 1rem;
+}
+.swim-tasks {
+  display: flex; gap: 0.4rem; align-items: center; flex: 1;
+}
+.task-block {
+  min-width: 60px; height: 35px; border-radius: 6px; display: flex;
+  align-items: center; justify-content: center; font-size: 0.7rem;
+  font-weight: 700; cursor: pointer; transition: all 0.2s;
+  border: 2px solid transparent;
+}
+.task-block:hover { transform: scale(1.05); border-color: #fff; }
+.task-success { background: #10b981; color: #fff; }
+.task-caught { background: #f59e0b; color: #fff; }
+.task-error { background: #ef4444; color: #fff; }
+.task-pending { background: #374151; color: #888; }
+.task-tooltip {
+  position: absolute; background: #1a1a1e; border: 1px solid #5b6af0;
+  border-radius: 8px; padding: 1rem; max-width: 250px; z-index: 1000;
+  font-size: 0.75rem; line-height: 1.4; color: #e8e8ea;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.task-tooltip .tooltip-op { color: #5b6af0; font-weight: 700; }
+.task-tooltip .tooltip-error { color: #ef4444; margin-top: 0.5rem; }
+
+/* METRICS DASHBOARD */
+.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+.metric-card {
+  background: #16161a; border: 1px solid #252529; border-radius: 10px;
+  padding: 1.2rem; text-align: center;
+}
+.metric-label { font-size: 0.8rem; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+.metric-value { font-size: 2rem; font-weight: 700; color: #5b6af0; font-family: monospace; }
+.metric-subtext { font-size: 0.75rem; color: #666; margin-top: 0.5rem; }
+.metric-good { color: #10b981; }
+.metric-warning { color: #f59e0b; }
+.metric-bad { color: #ef4444; }
+
+/* CHARTS */
+.chart-container {
+  position: relative; height: 300px; margin: 1.5rem 0;
+  background: #16161a; border: 1px solid #252529; border-radius: 12px;
+  padding: 1rem;
+}
+
+/* MESSAGE BOXES */
+.insight-box {
+  background: #1a2a3a; border-left: 4px solid #0ea5e9; border-radius: 8px;
+  padding: 1rem 1.2rem; margin: 1rem 0; font-size: 0.9rem; line-height: 1.6;
+}
+.insight-box strong { color: #0ea5e9; }
+
+/* LOGS */
+.logs-container {
+  background: #000; border: 1px solid #252529; border-radius: 8px;
+  padding: 1rem; max-height: 300px; overflow-y: auto; font-family: monospace;
+  font-size: 0.75rem; color: #666;
+}
+.log-entry { margin: 0.4rem 0; padding: 0.3rem; }
+.log-success { color: #10b981; }
+.log-error { color: #ef4444; }
+.log-info { color: #5b6af0; }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  body { padding: 1rem; }
+  h1 { font-size: 1.5rem; }
+  .two-col { grid-template-columns: 1fr; }
+  .control-param { margin-bottom: 1rem; }
+  .swim-container { min-height: 200px; padding: 0.75rem; }
+}
+</style>
+</head>
+<body>
+<div class="screen">
+
+<!-- TITLE & NAV -->
+<a href="../" class="back">← Back to Weeks</a>
+<h1>De Prony's Bureau Simulator</h1>
+<p><span class="tag">Division of Labor</span></p>
+<p style="color: #aaa; margin: 1rem 0;">
+  Historical computation as orchestrated labor: control workers, instructions, checking, and pressure to compute a table of sine values. 
+  Discover why more workers don't always mean faster results.
+</p>
+<hr>
+
+<!-- MODE SELECTOR -->
+<div class="mode-selector">
+  <h2>Choose a Mode</h2>
+  <div class="mode-buttons">
+    <button class="btn btn-secondary active" onclick="switchMode('scenarios')">📚 Guided Scenarios</button>
+    <button class="btn btn-secondary" onclick="switchMode('free')">🎮 Free Mode</button>
+  </div>
+</div>
+
+<!-- GUIDED SCENARIOS VIEW -->
+<div id="scenariosView">
+  <h2>Scenarios</h2>
+  <p style="color: #aaa; margin-bottom: 1.5rem;">Learn how the bureau system works through real challenges inspired by de Prony's actual labor division.</p>
+  
+  <div class="scenario-intro">
+    <h3 style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleScenario(0)">
+      <span>📖 Scenario 1: Perfect Conditions</span>
+      <span id="scenario0-toggle">▼</span>
+    </h3>
+    <div id="scenario0-content">
+      <p class="goal"><strong>Setup:</strong> Compute 10 sine values with 2 expert workers, crystal-clear instructions, and strict checking.</p>
+      <p class="goal"><strong>Goal:</strong> Achieve 100% accuracy and understand the ideal workflow.</p>
+      <button class="btn btn-primary" onclick="runScenario(0)">Run Scenario 1</button>
+    </div>
+  </div>
+
+  <div class="scenario-intro">
+    <h3 style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleScenario(1)">
+      <span>🔥 Scenario 2: The Coordination Challenge</span>
+      <span id="scenario1-toggle">▼</span>
+    </h3>
+    <div id="scenario1-content">
+      <p class="goal"><strong>Setup:</strong> Compute 20 sine values with 5 workers, unclear instructions, light checking, and time pressure.</p>
+      <p class="goal"><strong>Goal:</strong> Observe how adding workers without coordination support increases overhead and errors.</p>
+      <button class="btn btn-primary" onclick="runScenario(1)">Run Scenario 2</button>
+    </div>
+  </div>
+
+  <div class="scenario-intro">
+    <h3 style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleScenario(2)">
+      <span>⚡ Scenario 3: Speed Trap</span>
+      <span id="scenario2-toggle">▼</span>
+    </h3>
+    <div id="scenario2-content">
+      <p class="goal"><strong>Setup:</strong> Compute 25 sine values with 8 workers, moderate clarity, medium checking, and heavy pressure.</p>
+      <p class="goal"><strong>Goal:</strong> Test whether large teams can overcome the rush without collapsing into errors.</p>
+      <button class="btn btn-primary" onclick="runScenario(2)">Run Scenario 3</button>
+    </div>
+  </div>
+
+  <div class="scenario-intro">
+    <h3 style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleScenario(3)">
+      <span>🧠 Scenario 4: Minimal Bureau</span>
+      <span id="scenario3-toggle">▼</span>
+    </h3>
+    <div id="scenario3-content">
+      <p class="goal"><strong>Setup:</strong> Compute 15 sine values with 1 worker, clear instructions, strict checking, and mild pressure.</p>
+      <p class="goal"><strong>Goal:</strong> Compare a careful small bureau to a fast but error-prone team.</p>
+      <button class="btn btn-primary" onclick="runScenario(3)">Run Scenario 4</button>
+    </div>
+  </div>
+
+  <button class="btn btn-secondary" onclick="switchMode('free')" style="margin-top: 1.5rem;">Done with Scenarios? Try Free Mode →</button>
+</div>
+
+<!-- FREE MODE VIEW -->
+<div id="freeView" class="hidden">
+  <h2>Free Mode: Design Your Bureau</h2>
+  <p style="color: #aaa; margin-bottom: 1.5rem;">Customize all parameters and run unlimited simulations. Experiment to uncover what truly affects speed and accuracy.</p>
+
+  <div class="control-panel">
+    <h3>Parameters</h3>
+
+    <div class="control-param">
+      <div class="param-label">
+        <span>👷 Number of Workers</span>
+        <span class="value"><span id="workersDisplay">3</span></span>
+      </div>
+      <input id="workersRange" type="range" min="1" max="10" value="3" class="slider" oninput="updateParam('workers', this.value)">
+      <p style="color: #666; font-size: 0.8rem; margin-top: 0.3rem;">More workers = more parallelism, but also more coordination overhead.</p>
+    </div>
+
+    <div class="control-param">
+      <div class="param-label">
+        <span>📋 Base Error Rate</span>
+        <span class="value"><span id="errorRateDisplay">5</span>%</span>
+      </div>
+      <input id="errorRateRange" type="range" min="0" max="20" value="5" class="slider" oninput="updateParam('errorRate', this.value)">
+      <p style="color: #666; font-size: 0.8rem; margin-top: 0.3rem;">Worker skill level; will increase if instructions are unclear or pressure is high.</p>
+    </div>
+
+    <div class="control-param">
+      <div class="param-label">
+        <span>📝 Instruction Clarity</span>
+        <span class="value"><span id="clarityDisplay">3</span> / 5</span>
+      </div>
+      <input id="clarityRange" type="range" min="1" max="5" value="3" class="slider" oninput="updateParam('clarity', this.value)">
+      <p style="color: #666; font-size: 0.8rem; margin-top: 0.3rem;">Poor clarity → workers are slower AND make more mistakes. High clarity → faster, fewer errors.</p>
+    </div>
+
+    <div class="control-param">
+      <div class="param-label"><span>✓ Checker Thoroughness</span></div>
+      <div class="param-options">
+        <button class="option-btn" onclick="updateParam('checking', 'light')" id="checking-light">Light (30%)</button>
+        <button class="option-btn selected" onclick="updateParam('checking', 'medium')" id="checking-medium">Medium (70%)</button>
+        <button class="option-btn" onclick="updateParam('checking', 'strict')" id="checking-strict">Strict (100%)</button>
+      </div>
+      <p style="color: #666; font-size: 0.8rem; margin-top: 0.3rem;">How many results get verified before compilation? Stricter = slower, but fewer errors escape.</p>
+    </div>
+
+    <div class="control-param">
+      <div class="param-label">
+        <span>⚡ Time Pressure</span>
+        <span class="value"><span id="pressureDisplay">0</span>%</span>
+      </div>
+      <input id="pressureRange" type="range" min="0" max="100" value="0" class="slider" oninput="updateParam('pressure', this.value)">
+      <p style="color: #666; font-size: 0.8rem; margin-top: 0.3rem;">Workers rush; speed increases but error rate climbs. Classic speed-vs-quality tradeoff.</p>
+    </div>
+
+    <div class="control-param">
+      <div class="param-label">
+        <span>🔢 Table Size</span>
+        <span class="value"><span id="tableSizeDisplay">15</span> values</span>
+      </div>
+      <input id="tableSizeRange" type="range" min="5" max="50" value="15" class="slider" oninput="updateParam('tableSize', this.value)">
+    </div>
+
+    <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <button class="btn btn-primary" onclick="runFree()">🚀 Run Simulation</button>
+      <button class="btn btn-secondary" onclick="resetParams()">↺ Reset to Defaults</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS VIEW (both modes) -->
+<div id="resultsView" class="hidden">
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <h2>Simulation Results</h2>
+    <button class="btn btn-secondary" onclick="switchMode(simulation.mode)">← Back</button>
+  </div>
+
+  <!-- SCENARIO CONTEXT -->
+  <div id="scenarioContext" class="hidden insight-box" style="margin-bottom: 1.5rem;"></div>
+
+  <!-- METRICS DASHBOARD -->
+  <div class="visualization">
+    <h3>Performance Summary</h3>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Accuracy</div>
+        <div class="metric-value" id="metricAccuracy">—</div>
+        <div class="metric-subtext" id="metricAccuracyDetail">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Speed</div>
+        <div class="metric-value" id="metricSpeed">—</div>
+        <div class="metric-subtext" id="metricSpeedDetail">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Efficiency</div>
+        <div class="metric-value" id="metricEfficiency">—</div>
+        <div class="metric-subtext" id="metricEfficiencyDetail">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Coordination Overhead</div>
+        <div class="metric-value" id="metricOverhead">—</div>
+        <div class="metric-subtext" id="metricOverheadDetail">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="visualization">
+    <h3>Simulation Details</h3>
+    <p id="detailSummary" style="color: #ccc; margin-bottom: 1rem; line-height: 1.6;"></p>
+    <div class="metrics-grid" id="paramsGrid"></div>
+  </div>
+
+  <!-- NARRATIVE VISUALIZATION -->
+  <div class="visualization">
+    <h3>Work Flow: Task Execution Timeline</h3>
+    <p style="color: #888; font-size: 0.85rem; margin-bottom: 1rem;">Each row is a worker (or checker/compiler). Green = success, Yellow = caught error, Red = missed error. Click a task for details.</p>
+    <div class="swim-container">
+      <div class="swim-lanes" id="swimLanes"></div>
+    </div>
+  </div>
+
+  <!-- ERROR TREND CHART -->
+  <div class="visualization">
+    <h3>Error Rate Over Time</h3>
+    <div class="chart-container">
+      <canvas id="errorChart"></canvas>
+    </div>
+  </div>
+
+  <!-- INTERPRETATION -->
+  <div class="insight-box" id="interpretationBox">
+    <strong>💡 Interpretation:</strong>
+    <div id="interpretationText"></div>
+  </div>
+
+  <div class="insight-box" id="whyMattersBox">
+    <strong>Why this matters:</strong>
+    <div id="whyMattersText">
+      Computation in de Prony's bureau was not just arithmetic; it was a managed workflow. More hands could increase speed only if instructions were clear and checks were effective. Otherwise, extra workers became overhead.
+    </div>
+  </div>
+
+  <!-- DETAILED LOGS -->
+  <div class="visualization">
+    <h3>Detailed Execution Log</h3>
+    <div class="logs-container" id="logsContainer"></div>
+  </div>
+
+</div>
+
+</div>
+
+<script>
+// ============================================================================
+// SIMULATION ENGINE
+// ============================================================================
+
+const simulation = {
+  mode: 'scenarios',
+  params: {
+    workers: 3,
+    errorRate: 5,
+    clarity: 3,
+    checking: 'medium',
+    pressure: 0,
+    tableSize: 15
+  },
+  scenarios: [
+    {
+      name: 'Perfect Conditions',
+      params: { workers: 2, errorRate: 2, clarity: 5, checking: 'strict', pressure: 0, tableSize: 10 },
+      description: 'Ideal scenario: 2 expert workers, clear instructions, strict checking. Expect 100% accuracy and smooth workflow.'
+    },
+    {
+      name: 'Coordination Challenge',
+      params: { workers: 5, errorRate: 8, clarity: 2, checking: 'light', pressure: 50, tableSize: 20 },
+      description: 'The coordination challenge: 5 workers, unclear instructions, light checking, time pressure. Observe how overhead grows and errors escape.'
+    },
+    {
+      name: 'Speed Trap',
+      params: { workers: 8, errorRate: 4, clarity: 3, checking: 'medium', pressure: 80, tableSize: 25 },
+      description: 'Many hands, high pressure: see whether a large team can actually keep up when workers rush and checking is only partial.'
+    },
+    {
+      name: 'Minimal Bureau',
+      params: { workers: 1, errorRate: 3, clarity: 4, checking: 'strict', pressure: 20, tableSize: 15 },
+      description: 'A small bureau with careful checking. Compare low coordination cost against lost parallelism.'
+    }
+  ],
+  results: null
+};
+
+// Sine approximation via piecewise operations (mimics historical computation)
+function computeSineValue(x) {
+  // Normalize to [0, 2π]
+  const TWO_PI = 2 * Math.PI;
+  x = x % TWO_PI;
+  
+  // Taylor series approximation: sin(x) ≈ x - x³/3! + x⁵/5! - x⁷/7!
+  const x2 = x * x;
+  const x3 = x2 * x;
+  const x5 = x3 * x2;
+  const x7 = x5 * x2;
+  
+  return x - x3 / 6 + x5 / 120 - x7 / 5040;
+}
+
+// Worker performs a single arithmetic operation with error chance
+function workerCompute(operation, input1, input2, errorRate, clarity, pressure) {
+  const baseError = errorRate + (1 - clarity / 5) * 5 + (pressure / 100) * 3;
+  const actualError = Math.max(0, Math.min(100, baseError)); // Clamp 0–100%
+  
+  let result;
+  switch(operation) {
+    case 'multiply': result = input1 * input2; break;
+    case 'divide': result = input1 / (input2 || 0.0001); break;
+    case 'add': result = input1 + input2; break;
+    case 'subtract': result = input1 - input2; break;
+    case 'square': result = input1 * input1; break;
+    case 'lookup': result = Math.sin(input1); break; // "lookup" table
+    default: result = input1;
+  }
+  
+  // Introduce error if dice roll lands within error probability
+  const hasError = Math.random() * 100 < actualError;
+  if (hasError) {
+    const errorMagnitude = (Math.random() - 0.5) * 0.2 * Math.abs(result);
+    result += errorMagnitude;
+  }
+  
+  return { result, hasError };
+}
+
+// Checker validates a result; may miss errors if checking is lax
+function checkerValidate(computed, correct, thoroughness) {
+  let checksResult = false;
+  let caught = false;
+  
+  if (thoroughness === 'strict') checksResult = true;
+  else if (thoroughness === 'medium') checksResult = Math.random() < 0.7;
+  else checksResult = Math.random() < 0.3;
+  
+  if (checksResult) {
+    const tolerance = 0.01; // 1% tolerance
+    const error = Math.abs(computed - correct) / (Math.abs(correct) || 1);
+    caught = error > tolerance;
+  }
+  
+  return { checksResult, caught };
+}
+
+// Main simulation: orchestrate workers, checker, compiler
+function runSimulation(params) {
+  const logEntries = [];
+  const tasks = [];
+  const lanes = {};
+  
+  // Initialize lanes for workers, checker, and compiler
+  for (let i = 0; i < params.workers; i++) {
+    lanes[`worker${i}`] = [];
+  }
+  lanes['checker'] = [];
+  lanes['compiler'] = [];
+  
+  logEntries.push({ type: 'info', message: `[PLANNER] Decomposing ${params.tableSize} sine computations into worker tasks...` });
+  
+  const values = [];
+  const expectedResults = [];
+  for (let i = 1; i <= params.tableSize; i++) {
+    const x = i * 0.1;
+    values.push(x);
+    expectedResults.push(Math.sin(x));
+  }
+  
+  let timeElapsed = 0;
+  let workerIndex = 0;
+  
+  for (let i = 0; i < values.length; i++) {
+    const x = values[i];
+    const expected = expectedResults[i];
+    const worker = `worker${workerIndex % params.workers}`;
+    const taskId = `task_${i}`;
+    
+    const step1 = workerCompute('multiply', x, 0.9999, params.errorRate, params.clarity, params.pressure);
+    const step2 = workerCompute('lookup', step1.result, 0, params.errorRate, params.clarity, params.pressure);
+    const step3 = workerCompute('add', step2.result, 0.0001, params.errorRate, params.clarity, params.pressure);
+    const stepResults = [
+      { op: 'x × 0.9999', result: step1.result, hasError: step1.hasError },
+      { op: 'lookup(sin)', result: step2.result, hasError: step2.hasError },
+      { op: '+ 0.0001', result: step3.result, hasError: step3.hasError }
+    ];
+    
+    const computed = step3.result;
+    const hasError = stepResults.some(step => step.hasError);
+    const task = {
+      id: taskId,
+      worker,
+      input: x.toFixed(3),
+      computed: computed.toFixed(6),
+      expected: expected.toFixed(6),
+      hasError,
+      caught: false,
+      status: 'success',
+      steps: stepResults
+    };
+    
+    tasks.push(task);
+    lanes[worker].push({ id: taskId, status: 'success', task });
+    
+    logEntries.push({ type: 'info', message: `[${worker}] Processing sin(${x.toFixed(1)}):` });
+    stepResults.forEach((step, index) => {
+      const stepMessage = `  step ${index + 1}: ${step.op} = ${step.result.toFixed(6)}${step.hasError ? ' ⚠️ mistake' : ''}`;
+      logEntries.push({ type: step.hasError ? 'error' : 'info', message: stepMessage });
+    });
+    logEntries.push({ type: hasError ? 'error' : 'success', message: `  result: ${computed.toFixed(6)} (expected ${expected.toFixed(6)})` });
+    
+    if (hasError) {
+      lanes[worker][lanes[worker].length - 1].status = 'error';
+    }
+    
+    const baseTaskTime = 1;
+    const clarityModifier = 1 - (params.clarity - 3) * 0.1;
+    const pressureModifier = 1 - params.pressure / 200;
+    timeElapsed += baseTaskTime * clarityModifier * pressureModifier;
+    workerIndex++;
+  }
+  
+  logEntries.push({ type: 'info', message: `\n[CHECKER] Reviewing ${params.tableSize} results with thoroughness: ${params.checking}...` });
+  let errorsFound = 0;
+  
+  for (const task of tasks) {
+    const check = checkerValidate(parseFloat(task.computed), parseFloat(task.expected), params.checking);
+    const checkerStatus = check.checksResult ? (check.caught ? 'caught' : 'success') : 'unchecked';
+    lanes['checker'].push({ id: task.id, status: checkerStatus, task });
+    
+    if (check.checksResult) {
+      logEntries.push({ type: 'info', message: `[CHECKER] Examining ${task.id}: computed ${task.computed} vs expected ${task.expected}` });
+    } else {
+      logEntries.push({ type: 'info', message: `[CHECKER] Skipping ${task.id} due to partial checking.` });
+    }
+    
+    if (check.caught) {
+      task.caught = true;
+      task.status = 'caught';
+      errorsFound++;
+      logEntries.push({ type: 'error', message: `  ERROR FOUND: ${task.id} corrected to ${task.expected}` });
+      task.computed = task.expected;
+    }
+  }
+  
+  const checkTime = params.tableSize * (params.checking === 'strict' ? 0.6 : params.checking === 'medium' ? 0.4 : 0.2);
+  timeElapsed += checkTime;
+  timeElapsed += errorsFound * 0.5;
+  
+  logEntries.push({ type: 'info', message: `\n[COMPILER] Assembling final output...` });
+  let correctCount = 0;
+  for (const task of tasks) {
+    const isCorrect = Math.abs(parseFloat(task.computed) - parseFloat(task.expected)) < 0.01;
+    const compileStatus = isCorrect ? 'success' : 'error';
+    lanes['compiler'].push({ id: task.id, status: compileStatus, task });
+    if (isCorrect) correctCount++;
+  }
+  
+  const accuracy = (correctCount / params.tableSize) * 100;
+  const speed = params.tableSize / Math.max(0.1, timeElapsed);
+  
+  const results = {
+    accuracy,
+    speed,
+    completedValues: correctCount,
+    totalValues: params.tableSize,
+    timeElapsed,
+    tasks,
+    lanes,
+    logEntries,
+    paramsUsed: params,
+    metrics: {
+      errorsGenerated: tasks.filter(t => t.hasError).length,
+      errorsCaught: errorsFound,
+      errorsMissed: tasks.filter(t => t.hasError && !t.caught).length,
+      efficiency: correctCount / params.tableSize
+    }
+  };
+  
+  return results;
+}
+
+// ============================================================================
+// UI FUNCTIONS
+// ============================================================================
+
+// ============================================================================
+// UI FUNCTIONS
+// ============================================================================
+
+function switchMode(mode) {
+  simulation.mode = mode;
+  document.getElementById('scenariosView').classList.toggle('hidden', mode !== 'scenarios');
+  document.getElementById('freeView').classList.toggle('hidden', mode !== 'free');
+  document.getElementById('resultsView').classList.add('hidden');
+  
+  // Update mode buttons
+  document.querySelectorAll('.mode-buttons .btn').forEach(b => b.classList.remove('active'));
+  if (mode === 'scenarios') {
+    document.querySelectorAll('.mode-buttons .btn')[0].classList.add('active');
+  } else {
+    document.querySelectorAll('.mode-buttons .btn')[1].classList.add('active');
+  }
+}
+
+function toggleScenario(idx) {
+  const content = document.getElementById(`scenario${idx}-content`);
+  const toggle = document.getElementById(`scenario${idx}-toggle`);
+  content.classList.toggle('hidden');
+  toggle.textContent = content.classList.contains('hidden') ? '▶' : '▼';
+}
+
+function updateParam(param, value) {
+  if (param === 'workers' || param === 'tableSize') {
+    simulation.params[param] = parseInt(value);
+    document.getElementById(`${param}Display`).textContent = value;
+  } else if (param === 'errorRate' || param === 'pressure') {
+    simulation.params[param] = parseInt(value);
+    document.getElementById(`${param}Display`).textContent = value;
+  } else if (param === 'clarity') {
+    simulation.params[param] = parseInt(value);
+    document.getElementById('clarityDisplay').textContent = value;
+  } else if (param === 'checking') {
+    simulation.params.checking = value;
+    document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById(`checking-${value}`).classList.add('selected');
+  }
+}
+
+function resetParams() {
+  simulation.params = { workers: 3, errorRate: 5, clarity: 3, checking: 'medium', pressure: 0, tableSize: 15 };
+  document.getElementById('workersRange').value = 3;
+  document.getElementById('errorRateRange').value = 5;
+  document.getElementById('clarityRange').value = 3;
+  document.getElementById('pressureRange').value = 0;
+  document.getElementById('tableSizeRange').value = 15;
+  document.getElementById('workersDisplay').textContent = '3';
+  document.getElementById('errorRateDisplay').textContent = '5';
+  document.getElementById('clarityDisplay').textContent = '3';
+  document.getElementById('pressureDisplay').textContent = '0';
+  document.getElementById('tableSizeDisplay').textContent = '15';
+  document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('checking-medium').classList.add('selected');
+}
+
+function runScenario(idx) {
+  const scenario = simulation.scenarios[idx];
+  const results = runSimulation(scenario.params);
+  simulation.results = results;
+  displayResults(true, scenario, scenario.params);
+}
+
+function runFree() {
+  const results = runSimulation(simulation.params);
+  simulation.results = results;
+  displayResults(false, null, simulation.params);
+}
+
+function displayResults(isScenario, scenario, paramsUsed) {
+  document.getElementById('scenariosView').classList.add('hidden');
+  document.getElementById('freeView').classList.add('hidden');
+  document.getElementById('resultsView').classList.remove('hidden');
+  
+  const results = simulation.results;
+  
+  // Scenario context
+  if (isScenario) {
+    document.getElementById('scenarioContext').innerHTML = `
+      <strong>${scenario.name}</strong><br>
+      ${scenario.description}
+    `;
+    document.getElementById('scenarioContext').classList.remove('hidden');
+  } else {
+    document.getElementById('scenarioContext').classList.add('hidden');
+  }
+  
+  // Metrics
+  const accuracy = results.accuracy.toFixed(1);
+  const speed = results.speed.toFixed(2);
+  const efficiency = (results.metrics.efficiency * 100).toFixed(1);
+  const overhead = ((results.metrics.errorsCaught * 0.5) / results.timeElapsed * 100).toFixed(1);
+  
+  document.getElementById('metricAccuracy').textContent = accuracy + '%';
+  document.getElementById('metricAccuracyDetail').innerHTML = 
+    `<span class="${accuracy >= 95 ? 'metric-good' : accuracy >= 80 ? 'metric-warning' : 'metric-bad'}">${results.metrics.errorsMissed} errors missed</span>`;
+  
+  document.getElementById('metricSpeed').textContent = speed;
+  document.getElementById('metricSpeedDetail').textContent = 'values/time';
+  
+  document.getElementById('metricEfficiency').textContent = efficiency + '%';
+  document.getElementById('metricEfficiencyDetail').innerHTML = 
+    `<span class="${efficiency >= 80 ? 'metric-good' : 'metric-warning'}">${results.completedValues}/${results.totalValues} correct</span>`;
+  
+  document.getElementById('metricOverhead').textContent = overhead + '%';
+  document.getElementById('metricOverheadDetail').textContent = 'checking + correction time';
+  
+  document.getElementById('detailSummary').textContent = `This run used ${paramsUsed.workers} worker(s), ${paramsUsed.tableSize} values, ${paramsUsed.clarity}/5 clarity, ${paramsUsed.pressure}% pressure, and ${paramsUsed.checking} checking.`;
+  
+  document.getElementById('paramsGrid').innerHTML = `
+    <div class="metric-card"><div class="metric-label">Workers</div><div class="metric-value">${paramsUsed.workers}</div></div>
+    <div class="metric-card"><div class="metric-label">Error rate</div><div class="metric-value">${paramsUsed.errorRate}%</div></div>
+    <div class="metric-card"><div class="metric-label">Clarity</div><div class="metric-value">${paramsUsed.clarity}/5</div></div>
+    <div class="metric-card"><div class="metric-label">Checking</div><div class="metric-value">${paramsUsed.checking}</div></div>
+    <div class="metric-card"><div class="metric-label">Pressure</div><div class="metric-value">${paramsUsed.pressure}%</div></div>
+    <div class="metric-card"><div class="metric-label">Table size</div><div class="metric-value">${paramsUsed.tableSize}</div></div>
+  `;
+  
+  // Build swim lanes visualization
+  const swimLanesHTML = Object.entries(results.lanes).map(([lane, tasks]) => {
+    const laneLabel = lane === 'checker' ? '✓ Checker' : lane === 'compiler' ? '📦 Compiler' : lane.replace('worker', '👷 Worker ');
+    const tasksHTML = tasks.map(t => {
+      const status = t.status === 'success' ? 'task-success' : t.status === 'caught' ? 'task-caught' : t.status === 'error' ? 'task-error' : 'task-pending';
+      const taskObj = t.task;
+      const title = `${taskObj.id}: sin(${taskObj.input})`;
+      return `<div class="task-block ${status}" title="${title}" onclick="showTaskDetail('${lane}', '${t.id}', ${JSON.stringify(taskObj).replace(/"/g, '&quot;')})">
+        ${t.id.replace('task_', '')}
+      </div>`;
+    }).join('');
+    
+    return `
+      <div class="swim-lane">
+        <div class="swim-label">${laneLabel}</div>
+        <div class="swim-tasks">${tasksHTML}</div>
+      </div>
+    `;
+  }).join('');
+  
+  document.getElementById('swimLanes').innerHTML = swimLanesHTML;
+  
+  const logEntries = results.logEntries || [];
+  document.getElementById('logsContainer').innerHTML = 
+    logEntries.length > 0 ? logEntries.map(entry => {
+      const className = entry.type === 'error' ? 'log-error' : entry.type === 'success' ? 'log-success' : 'log-info';
+      return `<div class="log-entry ${className}">${entry.message}</div>`;
+    }).join('') : '<div class="log-entry log-info">No execution log was produced.</div>';
+  
+  const chartCanvas = document.getElementById('errorChart');
+  const chartContainer = chartCanvas ? chartCanvas.parentElement : null;
+  if (window.errorChartInstance && typeof window.errorChartInstance.destroy === 'function') {
+    window.errorChartInstance.destroy();
+  }
+  
+  const errorProgression = [];
+  const missedProgression = [];
+  let accumulatedErrors = 0;
+  let accumulatedMissed = 0;
+  for (let i = 0; i < results.tasks.length; i++) {
+    if (results.tasks[i].hasError) accumulatedErrors++;
+    if (results.tasks[i].hasError && !results.tasks[i].caught) accumulatedMissed++;
+    errorProgression.push((accumulatedErrors / (i + 1)) * 100);
+    missedProgression.push((accumulatedMissed / (i + 1)) * 100);
+  }
+  
+  if (chartCanvas && typeof Chart !== 'undefined') {
+    try {
+      window.errorChartInstance = new Chart(chartCanvas, {
+        type: 'line',
+        data: {
+          labels: results.tasks.map((_, i) => `${i + 1}`),
+          datasets: [
+            {
+              label: 'Cumulative Error Rate',
+              data: errorProgression,
+              borderColor: '#ef4444',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              borderWidth: 2,
+              tension: 0.3,
+              fill: true,
+              pointRadius: 3,
+              pointBackgroundColor: '#ef4444'
+            },
+            {
+              label: 'Missed Errors',
+              data: missedProgression,
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              borderWidth: 2,
+              tension: 0.3,
+              fill: true,
+              pointRadius: 3,
+              pointBackgroundColor: '#f59e0b'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#fff' } }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: { color: '#888' },
+              grid: { color: '#252529' }
+            },
+            x: {
+              ticks: { color: '#888' },
+              grid: { color: '#252529' }
+            }
+          }
+        }
+      });
+    } catch (chartError) {
+      if (chartContainer) {
+        chartContainer.innerHTML = '<div class="log-entry log-info">Error trend chart is unavailable in this browser.</div>';
+      }
+      console.error('Chart rendering failed:', chartError);
+    }
+  } else if (chartContainer) {
+    chartContainer.innerHTML = '<div class="log-entry log-info">Error trend chart library failed to load.</div>';
+  }
+  
+  const insights = [];
+  if (accuracy >= 95) {
+    insights.push(`<strong>Accuracy excellent:</strong> Configuration kept the bureau stable and controlled errors.`);
+  } else if (accuracy >= 80) {
+    insights.push(`<strong>Accuracy acceptable:</strong> Some mistakes slipped through—strict checking would help more than extra workers.`);
+  } else {
+    insights.push(`<strong>Accuracy poor:</strong> The bureau produced too many uncaught mistakes. Reduce pressure or improve clarity.`);
+  }
+  
+  if (paramsUsed.workers > 3) {
+    if (speed < paramsUsed.workers * 0.9) {
+      insights.push(`<strong>Coordination overhead:</strong> ${paramsUsed.workers} workers introduced delay. More hands did not translate directly into speed.`);
+    } else {
+      insights.push(`<strong>Parallel gain:</strong> The team still managed solid throughput despite coordination complexity.`);
+    }
+  }
+  
+  if (paramsUsed.pressure > 50) {
+    insights.push(`<strong>Pressure effect:</strong> High time pressure increased the chance of mistakes and made checking more important.`);
+  }
+  
+  document.getElementById('interpretationText').innerHTML = insights.join('<br>');
+}
+
+function showTaskDetail(lane, taskId, taskObj) {
+  const stepLines = taskObj.steps ? taskObj.steps.map((step, index) => `Step ${index + 1}: ${step.op} = ${step.result.toFixed(6)}${step.hasError ? ' ⚠️ mistake' : ''}`) : [];
+  const detailLines = [
+    `Task: ${taskId}`,
+    `Worker: ${taskObj.worker}`,
+    `Input: sin(${taskObj.input})`,
+    `Expected: ${taskObj.expected}`,
+    `Computed: ${taskObj.computed}`,
+    `Error present: ${taskObj.hasError}`,
+    `Caught by checker: ${taskObj.caught}`,
+    '',
+    ...stepLines
+  ];
+  alert(detailLines.join('\n'));
+}
+
+// Initialize on page load
+window.addEventListener('DOMContentLoaded', () => {
+  switchMode('scenarios');
+});
+</script>
+</body>
+</html>
