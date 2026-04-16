@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Week 4 — Bell Curve Tycoon</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #1a1410;
+  --bg2: #221e18;
+  --bg3: #2d2820;
+  --border: #4a3f2f;
+  --gold: #c9a84c;
+  --gold2: #e8c97a;
+  --red: #c0392b;
+  --green: #27ae60;
+  --text: #e8dcc8;
+  --muted: #9a8a72;
+  --accent: #8b6914;
+}
+
+body {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ── SCREENS ── */
+.screen { display: none; width: 100%; max-width: 960px; padding: 1.5rem; }
+.screen.active { display: block; }
+
+/* ── MENU ── */
+#menuScreen {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+.menu-ornament {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+  color: var(--gold);
+  letter-spacing: 0.2em;
+}
+.menu-title {
+  font-size: 2.6rem;
+  font-weight: bold;
+  color: var(--gold2);
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  margin-bottom: 0.3rem;
+}
+.menu-subtitle {
+  font-size: 0.95rem;
+  color: var(--muted);
+  font-style: italic;
+  margin-bottom: 0.2rem;
+}
+.menu-rule {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5rem auto;
+  width: 60%;
+}
+.menu-lore {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.75;
+  margin-bottom: 2rem;
+  padding: 0 1rem;
+}
+.menu-lore em { color: var(--gold); font-style: italic; }
+.btn-start {
+  background: var(--gold);
+  color: #1a1410;
+  border: none;
+  padding: 0.9rem 2.8rem;
+  font-size: 1.1rem;
+  font-family: 'Georgia', serif;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  text-transform: uppercase;
+}
+.btn-start:hover { background: var(--gold2); transform: translateY(-1px); }
+.btn-start:active { transform: translateY(0); }
+
+/* ── GAME ── */
+#gameScreen { max-width: 960px; }
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+.score-display {
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.score-display strong {
+  color: var(--gold2);
+  font-size: 1.2rem;
+  font-family: monospace;
+}
+.era-badge {
+  font-size: 0.8rem;
+  color: var(--gold);
+  font-style: italic;
+  text-align: center;
+  flex: 1;
+  padding: 0 1rem;
+}
+.wave-info {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+/* ── CURVES GRID ── */
+.curves-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* ── CURVE CARD ── */
+.curve-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  position: relative;
+  transition: border-color 0.3s;
+}
+.curve-card.solved { border-color: var(--green); }
+.curve-card.expiring { border-color: var(--red); animation: pulse-border 0.6s infinite alternate; }
+@keyframes pulse-border {
+  from { border-color: var(--red); }
+  to { border-color: #ff6b5b; box-shadow: 0 0 8px rgba(192,57,43,0.4); }
+}
+
+.curve-title {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--gold2);
+  margin-bottom: 0.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.curve-description {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-style: italic;
+  margin-bottom: 0.7rem;
+  line-height: 1.4;
+}
+
+/* ── TIMER BAR ── */
+.timer-track {
+  height: 6px;
+  background: var(--bg3);
+  border-radius: 3px;
+  margin-bottom: 0.8rem;
+  overflow: hidden;
+}
+.timer-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.1s linear, background-color 0.3s;
+  background: var(--green);
+}
+.timer-fill.warn { background: #e67e22; }
+.timer-fill.danger { background: var(--red); }
+
+/* ── MINI CHART ── */
+.mini-chart {
+  position: relative;
+  height: 90px;
+  margin-bottom: 0.8rem;
+}
+.mini-chart canvas { width: 100% !important; height: 90px !important; }
+
+/* ── PARAMETERS ── */
+.params-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.param-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.param-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+.param-header span:last-child {
+  font-family: monospace;
+  color: var(--gold);
+  font-size: 0.8rem;
+}
+.param-hint {
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-style: italic;
+}
+.param-slider {
+  width: 100%;
+  height: 5px;
+  background: var(--bg3);
+  border-radius: 3px;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.param-slider::-webkit-slider-thumb {
+  appearance: none; -webkit-appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--gold); cursor: pointer;
+}
+.param-slider::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--gold); cursor: pointer; border: none;
+}
+
+/* ── SOLVED OVERLAY ── */
+.solved-badge {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(39, 174, 96, 0.12);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.solved-badge.visible { opacity: 1; }
+.solved-badge-text {
+  font-size: 1.4rem;
+  color: var(--green);
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+/* ── FITNESS METER ── */
+.fitness-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.fitness-pips {
+  display: flex;
+  gap: 2px;
+}
+.pip {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  transition: background 0.2s;
+}
+.pip.lit { background: var(--green); border-color: var(--green); }
+.pip.close { background: #e67e22; border-color: #e67e22; }
+
+/* ── GAME OVER ── */
+#gameoverScreen {
+  text-align: center;
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+.gameover-title {
+  font-size: 2.2rem;
+  color: var(--red);
+  font-style: italic;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+.gameover-quote {
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.7;
+  margin: 1rem 0 1.5rem;
+  padding: 0 1rem;
+}
+.gameover-score {
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.3rem;
+}
+.gameover-score-value {
+  font-size: 3.5rem;
+  font-weight: bold;
+  color: var(--gold2);
+  font-family: monospace;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 10px rgba(201,168,76,0.4);
+  margin-bottom: 0.3rem;
+}
+.gameover-breakdown {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 2rem;
+  line-height: 1.7;
+}
+.btn-restart {
+  background: transparent;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  padding: 0.7rem 2.2rem;
+  font-size: 1rem;
+  font-family: 'Georgia', serif;
+  letter-spacing: 0.08em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  text-transform: uppercase;
+  margin: 0.4rem;
+}
+.btn-restart:hover { background: var(--gold); color: #1a1410; }
+
+/* ── SCROLL for many cards ── */
+#gameScreen {
+  max-height: 100vh;
+  overflow-y: auto;
+}
+#gameScreen::-webkit-scrollbar { width: 6px; }
+#gameScreen::-webkit-scrollbar-track { background: var(--bg); }
+#gameScreen::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .curves-grid { grid-template-columns: 1fr; }
+  .menu-title { font-size: 1.9rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ MENU ══════════════ -->
+<div id="menuScreen" class="screen active">
+  <div class="menu-ornament">✦ ✦ ✦</div>
+  <div class="menu-title">Bell Curve Tycoon</div>
+  <div class="menu-subtitle">A Game of Social Law &amp; Statistical Control</div>
+  <hr class="menu-rule">
+  <p class="menu-lore">
+    The year is 1835. <em>Adolphe Quetelet</em>, the "social physicist," has declared that
+    society obeys natural laws as regular as the motions of the planets.<br><br>
+    Crime, suicide, marriage — all conform to the <em>bell curve</em>.<br>
+    Deviations are mere errors of observation, not acts of free will.<br><br>
+    You are the bureau's chief statistician. Populations are straying from the ideal.
+    Correct their distributions before the clock runs out, or face social disorder.
+  </p>
+  <button class="btn-start" onclick="startGame()">Begin Analysis</button>
+</div>
+
+<!-- ══════════════ GAME ══════════════ -->
+<div id="gameScreen" class="screen">
+  <div class="game-header">
+    <div class="score-display">Score: <strong id="scoreDisplay">0</strong></div>
+    <div class="era-badge" id="eraBadge">—</div>
+    <div class="wave-info" id="waveInfo">Wave 1</div>
+  </div>
+  <div class="curves-grid" id="curvesGrid"></div>
+</div>
+
+<!-- ══════════════ GAME OVER ══════════════ -->
+<div id="gameoverScreen" class="screen">
+  <div class="menu-ornament">✦</div>
+  <div class="gameover-title">Social Disorder</div>
+  <p class="gameover-quote" id="gameoverQuote"></p>
+  <div class="gameover-score">Final Score</div>
+  <div class="gameover-score-value" id="gameoverScore">0</div>
+  <div class="gameover-breakdown" id="gameoverBreakdown"></div>
+  <button class="btn-restart" onclick="startGame()">New Analysis</button>
+  <button class="btn-restart" onclick="showMenu()">Main Menu</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONSTANTS & DATA
+// ═══════════════════════════════════════════════════════════════
+
+const ERAS = [
+  { wave: 1,  label: "Brussels, 1827 — First Observations",        curves: 1, timeScale: 1.0 },
+  { wave: 2,  label: "Paris, 1831 — Moral Statistics",             curves: 1, timeScale: 1.0 },
+  { wave: 3,  label: "London, 1843 — Crime Registers",             curves: 2, timeScale: 0.97 },
+  { wave: 4,  label: "Edinburgh, 1850 — Lunacy Commission",        curves: 2, timeScale: 0.94 },
+  { wave: 5,  label: "Vienna, 1857 — Anthropometry",               curves: 3, timeScale: 0.91 },
+  { wave: 6,  label: "Galton's Lab, 1869 — Hereditary Genius",     curves: 3, timeScale: 0.88 },
+  { wave: 7,  label: "Chicago, 1880 — Hull House Census",          curves: 4, timeScale: 0.84 },
+  { wave: 8,  label: "Imperial Bureau, 1895 — Colonial Survey",    curves: 4, timeScale: 0.80 },
+  { wave: 9,  label: "Eugenics Office, 1910 — Fitness Registers",  curves: 5, timeScale: 0.75 },
+  { wave: 10, label: "The Grand Bureau — All Records",             curves: 5, timeScale: 0.68 },
+];
+
+// Pool of curve types. Each has realistic statistical parameters.
+const CURVE_POOL = [
+  {
+    id: 'crime',
+    title: 'Annual Burglaries',
+    description: '"The number of crimes is fixed by the social state." — Quetelet',
+    param: 'skewness',
+    paramLabel: 'Skewness',
+    hint: 'Drag toward 0 to remove the tail of habitual offenders',
+    unit: '',
+    min: -3.0, max: 3.0, target: 0.0, tolerance: 0.35,
+    initial: () => (Math.random() > 0.5 ? 1.4 : -1.4) + (Math.random() * 0.6 - 0.3),
+    duration: 18,
+  },
+  {
+    id: 'height',
+    title: 'Height Distribution',
+    description: 'The "Average Man" stands at the peak of the curve.',
+    param: 'kurtosis',
+    paramLabel: 'Excess Kurtosis',
+    hint: 'Bring tails in — the population must cluster around the mean',
+    unit: '',
+    min: -2.0, max: 5.0, target: 0.0, tolerance: 0.4,
+    initial: () => (Math.random() > 0.5 ? 2.8 : -0.8) + (Math.random() * 0.4 - 0.2),
+    duration: 20,
+  },
+  {
+    id: 'suicide',
+    title: 'Suicide Rate',
+    description: 'Durkheim found regularity where others saw despair.',
+    param: 'skewness',
+    paramLabel: 'Skewness',
+    hint: 'The distribution must be symmetric — no province shall dominate',
+    unit: '',
+    min: -3.0, max: 3.0, target: 0.0, tolerance: 0.30,
+    initial: () => (Math.random() > 0.5 ? 1.8 : -1.8) + (Math.random() * 0.5 - 0.25),
+    duration: 17,
+  },
+  {
+    id: 'wages',
+    title: 'Wage Distribution',
+    description: 'Labour income follows natural law, not negotiation.',
+    param: 'mean_shift',
+    paramLabel: 'Mean Offset',
+    hint: 'Centre the distribution: the mean must sit at zero deviation',
+    unit: '',
+    min: -4.0, max: 4.0, target: 0.0, tolerance: 0.35,
+    initial: () => (Math.random() > 0.5 ? 2.2 : -2.2) + (Math.random() * 0.5 - 0.25),
+    duration: 19,
+  },
+  {
+    id: 'intelligence',
+    title: 'Mental Faculty Index',
+    description: 'Galton believed intellect was heritable and measurable.',
+    param: 'kurtosis',
+    paramLabel: 'Excess Kurtosis',
+    hint: 'Neither too peaked nor too flat — nature is moderate',
+    unit: '',
+    min: -2.0, max: 5.0, target: 0.0, tolerance: 0.45,
+    initial: () => (Math.random() > 0.5 ? 3.1 : -0.6) + (Math.random() * 0.4 - 0.2),
+    duration: 22,
+  },
+  {
+    id: 'marriage',
+    title: 'Age at Marriage',
+    description: 'Marriage patterns were the pride of social statistics.',
+    param: 'skewness',
+    paramLabel: 'Skewness',
+    hint: 'Remove the late-marriage tail to restore the ideal curve',
+    unit: '',
+    min: -3.0, max: 3.0, target: 0.0, tolerance: 0.30,
+    initial: () => (Math.random() > 0.5 ? 1.6 : -1.6) + (Math.random() * 0.4 - 0.2),
+    duration: 16,
+  },
+  {
+    id: 'mortality',
+    title: 'Infant Mortality',
+    description: 'Life tables proved society could be measured and governed.',
+    param: 'mean_shift',
+    paramLabel: 'Mean Offset',
+    hint: 'Shift the distribution back to the expected rate',
+    unit: '',
+    min: -4.0, max: 4.0, target: 0.0, tolerance: 0.35,
+    initial: () => (Math.random() > 0.5 ? 2.5 : -2.5) + (Math.random() * 0.4 - 0.2),
+    duration: 18,
+  },
+  {
+    id: 'fitness',
+    title: 'Physical Fitness Score',
+    description: 'Anthropometrists ranked bodies. Normal was superior.',
+    param: 'kurtosis',
+    paramLabel: 'Excess Kurtosis',
+    hint: 'Excess kurtosis must reach zero: no outliers, no extremes',
+    unit: '',
+    min: -2.0, max: 5.0, target: 0.0, tolerance: 0.4,
+    initial: () => (Math.random() > 0.5 ? 2.6 : -0.7) + (Math.random() * 0.3 - 0.15),
+    duration: 21,
+  },
+];
+
+// Quotes shown on game over
+const GAMEOVER_QUOTES = [
+  '"The greater the number of individuals, the more does the influence of individual will disappear." — Adolphe Quetelet',
+  '"The processes of heredity are inflexible. The laws of nature bend for no reformer." — Francis Galton',
+  '"Crime is the product of social conditions, not of free will." — Cesare Lombroso',
+  '"The curve does not lie. The deviant is an error to be corrected." — Fictional Bureau Chief, 1870',
+  '"Statistics does not ask why. It only records what is." — Anonymous Victorian clerk',
+];
+
+// ═══════════════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════════════
+
+const G = {
+  wave: 0,
+  score: 0,
+  solvedThisWave: 0,
+  cards: [],        // array of card objects
+  raf: null,
+  gameOver: false,
+  lastTick: 0,
+  waveStartTime: 0,
+};
+
+// ═══════════════════════════════════════════════════════════════
+// CHART HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+// Generate points for a skewed/kurtotic distribution curve
+// param type: 'skewness' | 'kurtosis' | 'mean_shift'
+function distributionPoints(paramType, paramVal, N = 80) {
+  const xs = [];
+  for (let i = 0; i < N; i++) xs.push(-4 + (8 * i) / (N - 1));
+
+  let ys = xs.map(x => {
+    // Base normal
+    let y = Math.exp(-0.5 * x * x);
+
+    // Apply skewness using a simple skew-normal approximation
+    if (paramType === 'skewness') {
+      const alpha = paramVal * 1.5;
+      const skewFactor = 1 + Math.tanh(alpha * x * 0.4);
+      y = y * skewFactor;
+    }
+
+    // Apply excess kurtosis: positive = leptokurtic (heavy tails / peaked), negative = platykurtic
+    if (paramType === 'kurtosis') {
+      const k = paramVal;
+      if (k > 0) {
+        // More peaked: boost center, suppress shoulders
+        y = y * (1 + k * 0.18 * Math.exp(-0.5 * x * x) - k * 0.04);
+      } else {
+        // Flatter: suppress center, boost shoulders
+        y = y * (1 - k * 0.08 * Math.exp(-0.5 * x * x) + Math.abs(k) * 0.05 * Math.exp(-0.08 * x * x));
+      }
+    }
+
+    // Apply mean shift: the distribution is off-center
+    if (paramType === 'mean_shift') {
+      const shifted = x - paramVal;
+      y = Math.exp(-0.5 * shifted * shifted);
+    }
+
+    return Math.max(0, y);
+  });
+
+  // Normalize to peak = 1
+  const peak = Math.max(...ys, 0.001);
+  ys = ys.map(y => y / peak);
+
+  return { xs, ys };
+}
+
+function normalPoints(N = 80) {
+  const xs = [];
+  for (let i = 0; i < N; i++) xs.push(-4 + (8 * i) / (N - 1));
+  const ys = xs.map(x => Math.exp(-0.5 * x * x));
+  const peak = Math.max(...ys, 0.001);
+  return { xs, ys: ys.map(y => y / peak) };
+}
+
+// Draw both curves on a canvas
+function drawCurves(canvas, paramType, paramVal, solved) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 260;
+  const H = canvas.offsetHeight || 90;
+  canvas.width = W;
+  canvas.height = H;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const pad = 6;
+  const plotW = W - pad * 2;
+  const plotH = H - pad * 2;
+
+  function toPixel(xi, yi) {
+    return [pad + ((xi + 4) / 8) * plotW, pad + (1 - yi) * plotH];
+  }
+
+  // Target (ideal normal) — dashed gold
+  const normal = normalPoints();
+  ctx.beginPath();
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = solved ? 'rgba(39,174,96,0.5)' : 'rgba(201,168,76,0.4)';
+  ctx.lineWidth = 1;
+  normal.xs.forEach((x, i) => {
+    const [px, py] = toPixel(x, normal.ys[i]);
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Current distribution — solid
+  const { xs, ys } = distributionPoints(paramType, paramVal);
+  const dist = solved ? 'rgba(39,174,96,0.9)' : 'rgba(201,168,76,0.9)';
+  const fill = solved ? 'rgba(39,174,96,0.15)' : 'rgba(201,168,76,0.08)';
+
+  // Fill
+  ctx.beginPath();
+  xs.forEach((x, i) => {
+    const [px, py] = toPixel(x, ys[i]);
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  });
+  const [lastPx] = toPixel(xs[xs.length - 1], 0);
+  const [firstPx] = toPixel(xs[0], 0);
+  ctx.lineTo(lastPx, pad + plotH);
+  ctx.lineTo(firstPx, pad + plotH);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+
+  // Stroke
+  ctx.beginPath();
+  ctx.strokeStyle = dist;
+  ctx.lineWidth = 2;
+  xs.forEach((x, i) => {
+    const [px, py] = toPixel(x, ys[i]);
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FITNESS: how close is the parameter to target
+// ═══════════════════════════════════════════════════════════════
+
+function fitness(template, currentVal) {
+  const dist = Math.abs(currentVal - template.target);
+  const tol = template.tolerance;
+  if (dist <= tol) return 1.0;
+  if (dist <= tol * 2.5) return 1 - (dist - tol) / (tol * 1.5);
+  return 0;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CARD CREATION
+// ═══════════════════════════════════════════════════════════════
+
+function createCard(template, cardIndex) {
+  const initialVal = template.initial();
+  return {
+    id: cardIndex,
+    template,
+    currentVal: initialVal,
+    timeLeft: template.duration,  // seconds
+    totalTime: template.duration,
+    solved: false,
+    expired: false,
+  };
+}
+
+function renderCard(card) {
+  const el = document.createElement('div');
+  el.className = 'curve-card';
+  el.id = `card-${card.id}`;
+  el.innerHTML = `
+    <div class="curve-title">${card.template.title}</div>
+    <div class="curve-description">${card.template.description}</div>
+
+    <div class="timer-track">
+      <div class="timer-fill" id="timer-${card.id}" style="width:100%"></div>
+    </div>
+
+    <div class="mini-chart">
+      <canvas id="canvas-${card.id}"></canvas>
+    </div>
+
+    <div class="params-list">
+      <div class="param-row">
+        <div class="param-header">
+          <span>${card.template.paramLabel}</span>
+          <span id="val-${card.id}">${card.currentVal.toFixed(2)}</span>
+        </div>
+        <div class="param-hint">${card.template.hint}</div>
+        <input
+          type="range"
+          class="param-slider"
+          id="slider-${card.id}"
+          min="${card.template.min}"
+          max="${card.template.max}"
+          step="0.05"
+          value="${card.currentVal}"
+          oninput="onSlider(${card.id}, this.value)"
+        >
+      </div>
+    </div>
+
+    <div class="fitness-row">
+      <span id="fitness-label-${card.id}" style="color:var(--muted)">Fitting…</span>
+      <div class="fitness-pips" id="pips-${card.id}">
+        ${[0,1,2,3,4].map(i => `<div class="pip" id="pip-${card.id}-${i}"></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="solved-badge" id="badge-${card.id}">
+      <span class="solved-badge-text">✓ NORMALIZED</span>
+    </div>
+  `;
+  return el;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GAME LOOP
+// ═══════════════════════════════════════════════════════════════
+
+function tick(timestamp) {
+  if (G.gameOver) return;
+
+  const dt = Math.min((timestamp - G.lastTick) / 1000, 0.1); // seconds, capped
+  G.lastTick = timestamp;
+
+  let anyExpired = false;
+
+  G.cards.forEach(card => {
+    if (card.solved || card.expired) return;
+
+    card.timeLeft -= dt;
+    if (card.timeLeft <= 0) {
+      card.timeLeft = 0;
+      card.expired = true;
+      anyExpired = true;
+    }
+
+    updateCardUI(card);
+  });
+
+  if (anyExpired) {
+    triggerGameOver();
+    return;
+  }
+
+  // Check if all cards solved → advance wave
+  if (G.cards.every(c => c.solved)) {
+    advanceWave();
+    return;
+  }
+
+  G.raf = requestAnimationFrame(tick);
+}
+
+function updateCardUI(card) {
+  const pct = card.timeLeft / card.totalTime;
+  const timerEl = document.getElementById(`timer-${card.id}`);
+  const cardEl = document.getElementById(`card-${card.id}`);
+  const canvasEl = document.getElementById(`canvas-${card.id}`);
+  const valEl = document.getElementById(`val-${card.id}`);
+  const pipsContainer = document.getElementById(`pips-${card.id}`);
+  const fitnessLabel = document.getElementById(`fitness-label-${card.id}`);
+
+  if (!timerEl) return;
+
+  // Timer bar
+  timerEl.style.width = (pct * 100).toFixed(1) + '%';
+  if (pct < 0.25) {
+    timerEl.className = 'timer-fill danger';
+    cardEl.classList.add('expiring');
+  } else if (pct < 0.5) {
+    timerEl.className = 'timer-fill warn';
+    cardEl.classList.remove('expiring');
+  } else {
+    timerEl.className = 'timer-fill';
+    cardEl.classList.remove('expiring');
+  }
+
+  // Fitness pips
+  const fit = fitness(card.template, card.currentVal);
+  for (let i = 0; i < 5; i++) {
+    const pip = document.getElementById(`pip-${card.id}-${i}`);
+    if (!pip) continue;
+    const threshold = (i + 1) / 5;
+    pip.className = 'pip' + (fit >= threshold ? ' lit' : fit >= threshold - 0.15 ? ' close' : '');
+  }
+
+  if (fit >= 1.0) {
+    fitnessLabel.textContent = 'NORMALIZED';
+    fitnessLabel.style.color = 'var(--green)';
+  } else if (fit > 0.5) {
+    fitnessLabel.textContent = `Converging… (${(fit * 100).toFixed(0)}%)`;
+    fitnessLabel.style.color = '#e67e22';
+  } else {
+    fitnessLabel.textContent = `Deviating (${(fit * 100).toFixed(0)}%)`;
+    fitnessLabel.style.color = 'var(--muted)';
+  }
+
+  // Redraw chart
+  if (canvasEl) {
+    drawCurves(canvasEl, card.template.param, card.currentVal, card.solved);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INTERACTIONS
+// ═══════════════════════════════════════════════════════════════
+
+function onSlider(cardId, rawVal) {
+  const card = G.cards.find(c => c.id === cardId);
+  if (!card || card.solved || card.expired) return;
+
+  card.currentVal = parseFloat(rawVal);
+  const valEl = document.getElementById(`val-${card.id}`);
+  if (valEl) valEl.textContent = card.currentVal.toFixed(2);
+
+  // Check if solved
+  const fit = fitness(card.template, card.currentVal);
+  if (fit >= 1.0 && !card.solved) {
+    card.solved = true;
+    G.score += Math.ceil(card.timeLeft * 10) + 50;
+    G.solvedThisWave++;
+    document.getElementById('scoreDisplay').textContent = G.score;
+
+    const cardEl = document.getElementById(`card-${card.id}`);
+    if (cardEl) cardEl.classList.add('solved');
+    const badge = document.getElementById(`badge-${card.id}`);
+    if (badge) badge.classList.add('visible');
+
+    // Disable slider
+    const slider = document.getElementById(`slider-${card.id}`);
+    if (slider) slider.disabled = true;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WAVE MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+function advanceWave() {
+  cancelAnimationFrame(G.raf);
+  G.wave++;
+
+  if (G.wave > ERAS.length) {
+    // Bonus for completing all eras — this shouldn't normally trigger
+    triggerGameOver();
+    return;
+  }
+
+  // Score bonus for clean wave
+  const bonusTime = G.cards.reduce((sum, c) => sum + (c.solved ? c.timeLeft : 0), 0);
+  G.score += Math.ceil(bonusTime * 5);
+  document.getElementById('scoreDisplay').textContent = G.score;
+
+  startWave();
+}
+
+function startWave() {
+  const era = ERAS[G.wave - 1];
+  G.solvedThisWave = 0;
+
+  document.getElementById('eraBadge').textContent = era.label;
+  document.getElementById('waveInfo').textContent = `Wave ${G.wave} / ${ERAS.length}`;
+
+  // Pick cards from pool without repeating types within a wave
+  const pool = [...CURVE_POOL];
+  shuffleArray(pool);
+  const chosen = pool.slice(0, era.curves);
+
+  G.cards = chosen.map((tmpl, i) => createCard(tmpl, G.wave * 10 + i));
+
+  const grid = document.getElementById('curvesGrid');
+  grid.innerHTML = '';
+  G.cards.forEach(card => {
+    const el = renderCard(card);
+    grid.appendChild(el);
+
+    // Initial draw after element is in DOM
+    requestAnimationFrame(() => {
+      const canvas = document.getElementById(`canvas-${card.id}`);
+      if (canvas) drawCurves(canvas, card.template.param, card.currentVal, false);
+    });
+  });
+
+  // Apply time scale
+  G.cards.forEach(card => {
+    card.totalTime = card.template.duration * era.timeScale;
+    card.timeLeft = card.totalTime;
+  });
+
+  G.lastTick = performance.now();
+  G.raf = requestAnimationFrame(tick);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GAME START / OVER
+// ═══════════════════════════════════════════════════════════════
+
+function startGame() {
+  G.wave = 0;
+  G.score = 0;
+  G.gameOver = false;
+  cancelAnimationFrame(G.raf);
+
+  document.getElementById('scoreDisplay').textContent = '0';
+
+  showScreen('gameScreen');
+  G.wave = 1;
+  startWave();
+}
+
+function triggerGameOver() {
+  G.gameOver = true;
+  cancelAnimationFrame(G.raf);
+
+  const quote = GAMEOVER_QUOTES[Math.floor(Math.random() * GAMEOVER_QUOTES.length)];
+  document.getElementById('gameoverQuote').textContent = `"${quote.replace(/^"|"$/g, '')}"`;
+  document.getElementById('gameoverScore').textContent = G.score;
+  document.getElementById('gameoverBreakdown').innerHTML =
+    `Survived <strong style="color:var(--gold)">${G.wave}</strong> wave${G.wave !== 1 ? 's' : ''} of social analysis.<br>
+     The bureau's order has collapsed.`;
+
+  showScreen('gameoverScreen');
+}
+
+function showMenu() {
+  cancelAnimationFrame(G.raf);
+  G.gameOver = true;
+  showScreen('menuScreen');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+</script>
+</body>
+</html>
