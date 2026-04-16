@@ -542,6 +542,7 @@ const G = {
   gameOver: false,
   lastTick: 0,
   waveStartTime: 0,
+  clearCountdown: 0,  // seconds remaining in between-wave pause
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -771,10 +772,22 @@ function tick(timestamp) {
     return;
   }
 
-  // Check if all cards solved → advance wave
+  // Check if all cards solved → brief cooldown then advance
   if (G.cards.every(c => c.solved)) {
-    advanceWave();
-    return;
+    if (G.clearCountdown <= 0) {
+      // First frame all are solved: start the cooldown
+      G.clearCountdown = 2.4;
+      showWaveClearBanner();
+    } else {
+      G.clearCountdown -= dt;
+      if (G.clearCountdown <= 0) {
+        G.clearCountdown = 0;
+        advanceWave();
+        return;
+      }
+    }
+  } else {
+    G.clearCountdown = 0;
   }
 
   G.raf = requestAnimationFrame(tick);
@@ -883,9 +896,37 @@ function advanceWave() {
   startWave();
 }
 
+function showWaveClearBanner() {
+  // Inject a full-width banner above the cards that fades out during the cooldown
+  const grid = document.getElementById('curvesGrid');
+  let banner = document.getElementById('waveClearBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'waveClearBanner';
+    banner.style.cssText = `
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 1.2rem;
+      border-radius: 8px;
+      background: rgba(39,174,96,0.12);
+      border: 1px solid rgba(39,174,96,0.4);
+      color: #27ae60;
+      font-size: 1.1rem;
+      font-weight: bold;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: opacity 0.4s;
+    `;
+    banner.textContent = '✓ All Distributions Normalized — Advancing…';
+    grid.prepend(banner);
+  }
+  banner.style.opacity = '1';
+}
+
 function startWave() {
   const era = ERAS[G.wave - 1];
   G.solvedThisWave = 0;
+  G.clearCountdown = 0;
 
   document.getElementById('eraBadge').textContent = era.label;
   document.getElementById('waveInfo').textContent = `Wave ${G.wave} / ${ERAS.length}`;
