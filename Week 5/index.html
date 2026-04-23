@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TURING-7 — Calibration Interface</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #00ff41;
+      --dim: #008a22;
+      --dark: #001a08;
+      --bg: #010d03;
+      --amber: #ffb000;
+      --red: #ff3333;
+      --white: #c8ffd4;
+    }
+
+    body {
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+      background: var(--bg);
+      color: var(--green);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* CRT scanlines */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px
+      );
+      pointer-events: none;
+      z-index: 9000;
+    }
+
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: flex; flex-direction: column; }
+
+    /* ── INTRO ── */
+    #screen-intro {
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 0.65rem;
+      letter-spacing: 0.3em;
+      color: var(--dim);
+      text-transform: uppercase;
+      margin-bottom: 2.5rem;
+    }
+
+    .intro-title {
+      font-size: clamp(1.2rem, 4vw, 2rem);
+      color: var(--green);
+      text-shadow: 0 0 18px var(--green);
+      margin-bottom: 0.4rem;
+    }
+
+    .intro-sub {
+      font-size: 0.8rem;
+      color: var(--dim);
+      letter-spacing: 0.12em;
+      margin-bottom: 2.5rem;
+    }
+
+    .brief {
+      max-width: 540px;
+      font-size: 0.82rem;
+      line-height: 1.9;
+      color: var(--white);
+      text-align: left;
+      padding: 1.25rem 1.5rem;
+      border: 1px solid #002208;
+      background: rgba(0,255,65,0.025);
+      margin-bottom: 2.5rem;
+    }
+
+    .brief p + p { margin-top: 0.9rem; }
+
+    .btn {
+      background: transparent;
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-family: inherit;
+      font-size: 0.85rem;
+      letter-spacing: 0.18em;
+      padding: 0.7rem 2.2rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+    }
+
+    .btn:hover {
+      background: var(--green);
+      color: var(--bg);
+      box-shadow: 0 0 22px var(--green);
+    }
+
+    /* ── TRAINING ── */
+    #screen-training {
+      align-items: center;
+      padding: 1.25rem 1rem 2rem;
+      gap: 0;
+    }
+
+    .train-hdr {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.6rem;
+    }
+
+    .lbl { font-size: 0.65rem; letter-spacing: 0.2em; color: var(--dim); text-transform: uppercase; }
+    .counter { font-size: 0.82rem; color: var(--green); }
+
+    .instruction {
+      font-size: 0.75rem;
+      color: var(--white);
+      letter-spacing: 0.05em;
+      margin-bottom: 0.9rem;
+      max-width: 520px;
+      text-align: center;
+      min-height: 1.2em;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      width: min(480px, 92vw);
+      aspect-ratio: 1;
+      cursor: crosshair;
+    }
+
+    canvas { display: block; }
+
+    #training-canvas {
+      width: 100%;
+      height: 100%;
+      border: 1px solid var(--dim);
+      box-shadow: 0 0 28px rgba(0,255,65,0.08);
+    }
+
+    .click-ring {
+      position: absolute;
+      border: 2px solid var(--amber);
+      border-radius: 50%;
+      pointer-events: none;
+      display: none;
+      width: 28px;
+      height: 28px;
+      transform: translate(-50%, -50%);
+      animation: ringOut 0.35s ease-out forwards;
+    }
+
+    @keyframes ringOut {
+      from { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+      to   { opacity: 0; transform: translate(-50%,-50%) scale(2); }
+    }
+
+    .prog-wrap {
+      width: min(480px, 92vw);
+      margin-top: 0.85rem;
+    }
+
+    .prog-lbl { font-size: 0.6rem; color: var(--dim); letter-spacing: 0.15em; margin-bottom: 0.28rem; }
+
+    .prog-bar { height: 3px; background: #001a08; border: 1px solid #002208; }
+
+    .prog-fill {
+      height: 100%;
+      background: var(--green);
+      box-shadow: 0 0 5px var(--green);
+      transition: width 0.3s ease;
+    }
+
+    .img-meta { font-size: 0.6rem; color: #004a14; margin-top: 0.4rem; letter-spacing: 0.1em; }
+
+    /* ── PROCESSING ── */
+    #screen-processing {
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .term-box {
+      width: min(520px, 92vw);
+      border: 1px solid var(--dim);
+      padding: 1.25rem;
+      background: rgba(0,255,65,0.015);
+    }
+
+    .term-title {
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      color: var(--dim);
+      border-bottom: 1px solid #001a08;
+      padding-bottom: 0.5rem;
+      margin-bottom: 0.9rem;
+    }
+
+    #term-out { font-size: 0.78rem; line-height: 2; min-height: 220px; }
+
+    .tl      { display: block; }
+    .tl.dim  { color: var(--dim); }
+    .tl.amb  { color: var(--amber); }
+    .tl.red  { color: var(--red); }
+
+    /* ── INFERENCE ── */
+    #screen-inference {
+      align-items: center;
+      padding: 0.75rem 1rem 1.5rem;
+    }
+
+    .inf-hdr {
+      width: 100%;
+      max-width: 880px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.4rem 0 0.75rem;
+      border-bottom: 1px solid #001a08;
+      margin-bottom: 0.85rem;
+    }
+
+    .inf-title {
+      font-size: 0.68rem;
+      letter-spacing: 0.22em;
+      color: var(--amber);
+      text-transform: uppercase;
+    }
+
+    .inf-title::after { content: '▮'; animation: blink 1s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .btn-restart {
+      background: transparent;
+      border: 1px solid #222;
+      color: #444;
+      font-family: inherit;
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      padding: 0.35rem 0.8rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: border-color 0.18s, color 0.18s;
+    }
+
+    .btn-restart:hover { border-color: var(--dim); color: var(--dim); }
+
+    .inf-body {
+      width: 100%;
+      max-width: 880px;
+      display: grid;
+      grid-template-columns: 1fr 260px;
+      gap: 1rem;
+    }
+
+    @media (max-width: 680px) {
+      .inf-body { grid-template-columns: 1fr; }
+    }
+
+    .inf-img-wrap {
+      position: relative;
+      aspect-ratio: 1;
+    }
+
+    #inference-canvas {
+      width: 100%;
+      height: 100%;
+      border: 1px solid var(--dim);
+    }
+
+    #reticle-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .inf-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .pblock {
+      border: 1px solid #001a08;
+      padding: 0.65rem 0.75rem;
+      background: rgba(0,255,65,0.015);
+    }
+
+    .pblock-lbl {
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      color: var(--dim);
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+
+    .pblock-val { font-size: 0.82rem; color: var(--green); }
+    .pblock-val.amb { color: var(--amber); }
+    .pblock-val.red { color: var(--red); }
+
+    .conf-bar { height: 5px; background: #001a08; margin-top: 0.35rem; }
+    .conf-fill {
+      height: 100%;
+      background: var(--amber);
+      box-shadow: 0 0 5px var(--amber);
+      transition: width 1.2s ease-out;
+    }
+
+    .btn-auth {
+      background: transparent;
+      border: 1px solid var(--red);
+      color: var(--red);
+      font-family: inherit;
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      padding: 0.6rem 0.5rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      width: 100%;
+      transition: background 0.18s, box-shadow 0.18s;
+    }
+
+    .btn-auth:hover {
+      background: rgba(255,51,51,0.12);
+      box-shadow: 0 0 14px rgba(255,51,51,0.25);
+    }
+
+    .btn-skip {
+      background: transparent;
+      border: 1px solid #222;
+      color: #444;
+      font-family: inherit;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      padding: 0.45rem 0.5rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      width: 100%;
+      margin-top: 0.3rem;
+      transition: border-color 0.18s, color 0.18s;
+    }
+
+    .btn-skip:hover { border-color: var(--dim); color: var(--dim); }
+
+    /* revelation log */
+    .rev-area {
+      width: 100%;
+      max-width: 880px;
+      margin-top: 0.75rem;
+      border-top: 1px solid #001a08;
+      padding-top: 0.75rem;
+      min-height: 90px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .rev-line {
+      font-size: 0.72rem;
+      line-height: 1.6;
+      opacity: 0;
+      transition: opacity 1.8s ease;
+      color: var(--dim);
+    }
+
+    .rev-line.show { opacity: 1; }
+    .rev-line.amb  { color: #775500; }
+    .rev-line.amb.show { color: var(--amber); }
+    .rev-line.red  { color: #550000; }
+    .rev-line.red.show  { color: var(--red); }
+
+    a.back {
+      position: fixed;
+      top: 0.9rem;
+      left: 0.9rem;
+      font-size: 0.6rem;
+      color: #222;
+      text-decoration: none;
+      letter-spacing: 0.1em;
+      z-index: 9999;
+      transition: color 0.18s;
+    }
+
+    a.back:hover { color: var(--dim); }
+  </style>
+</head>
+<body>
+
+<a href="../index.html" class="back">← HIPS 18504</a>
+
+<!-- INTRO -->
+<div id="screen-intro" class="screen active">
+  <div class="logo">Anthropic Defense Solutions · TURING-7 Platform · Build 3.1.4</div>
+  <h1 class="intro-title">IMAGE RECOGNITION CALIBRATION</h1>
+  <p class="intro-sub">Human-in-the-Loop Training Interface</p>
+
+  <div class="brief">
+    <p>Welcome to the TURING-7 Satellite Image Analysis Calibration Suite.</p>
+    <p>You have been selected to provide ground-truth labels for a machine learning system designed to identify significant activity in satellite imagery.</p>
+    <p>For each image, click on the location that appears to show the most significant or suspicious activity. Your responses will be used to train a neural network capable of autonomous target identification.</p>
+    <p>This session consists of <strong>24 calibration images</strong>. Image quality may vary. You must provide a label for every image.</p>
+  </div>
+
+  <button class="btn" onclick="startTraining()">BEGIN CALIBRATION</button>
+</div>
+
+<!-- TRAINING -->
+<div id="screen-training" class="screen">
+  <div class="train-hdr">
+    <span class="lbl">Calibration Image</span>
+    <span class="counter" id="train-counter">001 / 024</span>
+  </div>
+  <div class="instruction" id="instruction">Identify the location of greatest suspicious activity. Click to mark.</div>
+  <div class="canvas-wrap" id="canvas-wrap">
+    <canvas id="training-canvas" width="480" height="480"></canvas>
+    <div class="click-ring" id="click-ring"></div>
+  </div>
+  <div class="prog-wrap">
+    <div class="prog-lbl">TRAINING PROGRESS</div>
+    <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    <div class="img-meta" id="img-meta">IMG_001 · SECTOR_7G · CLASSIFICATION: RESTRICTED</div>
+  </div>
+</div>
+
+<!-- PROCESSING -->
+<div id="screen-processing" class="screen">
+  <div class="term-box">
+    <div class="term-title">TURING-7 — NEURAL NETWORK INITIALIZATION</div>
+    <div id="term-out"></div>
+  </div>
+</div>
+
+<!-- INFERENCE -->
+<div id="screen-inference" class="screen">
+  <div class="inf-hdr">
+    <span class="inf-title">PROMETHEUS SYSTEM — AUTONOMOUS TARGETING ACTIVE&nbsp;</span>
+    <button class="btn-restart" onclick="restartAll()">↺ RETRAIN MODEL</button>
+  </div>
+
+  <div class="inf-body">
+    <div class="inf-img-wrap">
+      <canvas id="inference-canvas" width="480" height="480"></canvas>
+      <canvas id="reticle-canvas"   width="480" height="480"></canvas>
+    </div>
+
+    <div class="inf-panel">
+      <div class="pblock">
+        <div class="pblock-lbl">Location</div>
+        <div class="pblock-val" id="inf-loc">—</div>
+      </div>
+      <div class="pblock">
+        <div class="pblock-lbl">Threat Classification</div>
+        <div class="pblock-val amb" id="inf-class">ANALYZING…</div>
+      </div>
+      <div class="pblock">
+        <div class="pblock-lbl">Target Confidence</div>
+        <div class="pblock-val amb" id="inf-conf">0%</div>
+        <div class="conf-bar"><div class="conf-fill" id="conf-fill" style="width:0%"></div></div>
+      </div>
+      <div class="pblock">
+        <div class="pblock-lbl">Coordinates</div>
+        <div class="pblock-val" id="inf-coords" style="font-size:0.68rem">—</div>
+      </div>
+      <button class="btn-auth" onclick="nextInference()">AUTHORIZE &amp; CONTINUE</button>
+      <button class="btn-skip" onclick="nextInference()">skip to next target</button>
+    </div>
+  </div>
+
+  <div class="rev-area" id="rev-area">
+    <div class="rev-line" id="rl0"></div>
+    <div class="rev-line" id="rl1"></div>
+    <div class="rev-line" id="rl2"></div>
+  </div>
+</div>
+
+<script>
+// ─── SEEDED PRNG ───────────────────────────────────────────
+function rng32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// ─── IMAGE GENERATOR ──────────────────────────────────────
+function drawSatImage(canvas, seed, cfg) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const r = rng32(seed);
+  const id = ctx.createImageData(W, H);
+  const d = id.data;
+  const noise = cfg.noise ?? 0.85;
+  const base  = cfg.base  ?? 30;
+
+  for (let i = 0; i < W * H; i++) {
+    const x = i % W, y = Math.floor(i / W);
+    let v = base + r() * 255 * noise;
+
+    // low-freq terrain
+    v += Math.sin(x * 0.025 + r() * 0.4) * 14 * (1 - noise);
+    v += Math.sin(y * 0.035 + r() * 0.4) * 10 * (1 - noise);
+
+    for (const f of (cfg.features || [])) {
+      const fx = f.x * W, fy = f.y * H;
+      const dist = Math.sqrt((x - fx) ** 2 + (y - fy) ** 2);
+
+      if (f.type === 'cluster') {
+        if (dist < f.r) v += (1 - dist / f.r) * 70 * r() + 15;
+        for (const ang of (f.roads || [])) {
+          const perp = Math.abs((x - fx) * Math.sin(ang) - (y - fy) * Math.cos(ang));
+          const along = (x - fx) * Math.cos(ang) + (y - fy) * Math.sin(ang);
+          if (along > 0 && along < 90 && perp < 2) v += 28;
+        }
+      }
+      if (f.type === 'dish') {
+        const ring = Math.abs(dist - f.r);
+        if (ring < 3) v += 65;
+        if (dist < 4)  v += 85;
+      }
+      if (f.type === 'grid') {
+        const lx = Math.abs((x - fx) % f.sp), ly = Math.abs((y - fy) % f.sp);
+        if ((lx < f.w || ly < f.w) && dist < f.ext) v += 22 * r() + 12;
+      }
+      if (f.type === 'wheel') {
+        // ferris wheel: outer ring + spokes
+        const outerR = f.r;
+        const ring = Math.abs(dist - outerR);
+        if (ring < 3.5) v += 70;
+        if (dist < 5)   v += 80;
+        if (dist < outerR) {
+          const ang = Math.atan2(y - fy, x - fx);
+          if (Math.abs(ang % (Math.PI / 4)) < 0.07) v += 45;
+        }
+      }
+    }
+
+    v = Math.max(0, Math.min(255, v));
+    // slight green tint (satellite palette)
+    d[i*4]   = v * 0.82;
+    d[i*4+1] = v;
+    d[i*4+2] = v * 0.72;
+    d[i*4+3] = 255;
+  }
+
+  ctx.putImageData(id, 0, 0);
+
+  // scanlines
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 1);
+
+  // vignette
+  const vg = ctx.createRadialGradient(W/2,H/2,W*0.28, W/2,H/2,W*0.75);
+  vg.addColorStop(0, 'transparent');
+  vg.addColorStop(1, 'rgba(0,0,0,0.6)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+
+  // HUD overlays
+  ctx.fillStyle = 'rgba(0,255,65,0.55)';
+  ctx.font = '10px "Share Tech Mono", monospace';
+  const rr = rng32(seed + 1);
+  const ts = `${pad(Math.floor(rr()*24))}:${pad(Math.floor(rr()*60))}:${pad(Math.floor(rr()*60))} UTC`;
+  ctx.fillText(ts, 8, H - 10);
+  ctx.fillText(`ALT: ${(380 + rr()*220).toFixed(1)} km`, W - 92, H - 10);
+  ctx.fillText(`ZOOM: ${(0.4 + rr()*2.2).toFixed(2)}×`, 8, 16);
+
+  // corner brackets
+  ctx.strokeStyle = 'rgba(0,255,65,0.35)';
+  ctx.lineWidth = 1;
+  const cl = 14;
+  [[6,6],[W-6,6],[6,H-6],[W-6,H-6]].forEach(([cx,cy]) => {
+    const sx = cx < W/2 ? 1 : -1, sy = cy < H/2 ? 1 : -1;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy); ctx.lineTo(cx + sx*cl, cy);
+    ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + sy*cl);
+    ctx.stroke();
+  });
+}
+
+function pad(n) { return String(n).padStart(2,'0'); }
+
+// ─── TRAINING CONFIGS ─────────────────────────────────────
+const TRAIN_CFG = [
+  { noise:0.74, base:22, features:[{type:'cluster',x:.35,y:.6,r:18,roads:[.4,2.1,3.8]}],  label:'SECTOR_7G',  coord:'23.5°N 45.2°E' },
+  { noise:0.97, base:14, features:[],                                                        label:'SECTOR_12A', coord:'31.8°N 35.5°E' },
+  { noise:0.65, base:26, features:[{type:'dish',x:.55,y:.42,r:12},{type:'dish',x:.3,y:.65,r:8}], label:'SECTOR_3F', coord:'15.3°N 32.5°E' },
+  { noise:0.87, base:20, features:[{type:'grid',x:.5,y:.5,sp:14,w:2,ext:80}],              label:'SECTOR_19B', coord:'34.5°N 69.2°E' },
+  { noise:1.00, base:9,  features:[],                                                        label:'SECTOR_4K',  coord:'6.1°N 1.0°E'   },
+  { noise:0.72, base:30, features:[{type:'cluster',x:.7,y:.3,r:22,roads:[1.0,3.6]}],       label:'SECTOR_8M',  coord:'11.8°N 42.9°E'  },
+  { noise:0.95, base:12, features:[{type:'dish',x:.2,y:.8,r:6}],                            label:'SECTOR_2P',  coord:'28.6°N 77.2°E'  },
+  { noise:0.60, base:35, features:[{type:'grid',x:.4,y:.55,sp:10,w:2,ext:100},{type:'cluster',x:.75,y:.25,r:14,roads:[2.5]}], label:'SECTOR_15C', coord:'33.3°N 44.4°E' },
+  { noise:0.99, base:7,  features:[],                                                        label:'SECTOR_21D', coord:'1.3°S 36.8°E'   },
+  { noise:0.80, base:22, features:[{type:'cluster',x:.5,y:.5,r:25,roads:[0,1.57,3.14,4.71]}], label:'SECTOR_9A', coord:'40.7°N 74.0°W' },
+  { noise:0.70, base:28, features:[{type:'dish',x:.6,y:.35,r:15},{type:'grid',x:.3,y:.7,sp:12,w:1.5,ext:70}], label:'SECTOR_6L', coord:'3.1°N 101.7°E' },
+  { noise:0.93, base:18, features:[{type:'cluster',x:.25,y:.4,r:10}],                       label:'SECTOR_17R', coord:'24.9°N 67.0°E'  },
+  { noise:1.00, base:5,  features:[],                                                        label:'SECTOR_22E', coord:'52.4°N 13.4°E'  },
+  { noise:0.78, base:20, features:[{type:'grid',x:.55,y:.45,sp:16,w:2.5,ext:90}],          label:'SECTOR_5T',  coord:'18.1°N 15.3°E'  },
+  { noise:0.85, base:25, features:[{type:'dish',x:.45,y:.55,r:10}],                         label:'SECTOR_10J', coord:'9.0°N 7.5°E'    },
+  { noise:0.90, base:15, features:[{type:'cluster',x:.6,y:.7,r:16,roads:[.8,2.9]}],        label:'SECTOR_14W', coord:'36.7°N 3.1°E'   },
+  { noise:0.96, base:10, features:[],                                                        label:'SECTOR_23F', coord:'7.4°N 80.6°E'   },
+  { noise:0.68, base:30, features:[{type:'grid',x:.35,y:.6,sp:9,w:1.5,ext:110},{type:'dish',x:.7,y:.25,r:11}], label:'SECTOR_11V', coord:'25.2°N 55.3°E' },
+  { noise:0.82, base:22, features:[{type:'cluster',x:.45,y:.3,r:20,roads:[1.2,4.0,5.5]}],  label:'SECTOR_16H', coord:'31.5°N 34.5°E'  },
+  { noise:0.98, base:8,  features:[],                                                        label:'SECTOR_24G', coord:'14.1°N 100.5°E' },
+  { noise:0.74, base:25, features:[{type:'dish',x:.5,y:.5,r:18},{type:'dish',x:.3,y:.35,r:9}], label:'SECTOR_18X', coord:'29.9°N 31.1°E' },
+  { noise:0.88, base:18, features:[{type:'grid',x:.6,y:.4,sp:11,w:2,ext:85}],              label:'SECTOR_20Y', coord:'17.5°N 78.5°E'  },
+  { noise:0.92, base:14, features:[{type:'cluster',x:.3,y:.65,r:12}],                       label:'SECTOR_25Z', coord:'48.9°N 2.4°E'   },
+  { noise:1.00, base:4,  features:[],                                                        label:'SECTOR_26Q', coord:'35.7°N 51.4°E'  },
+];
+
+const INSTRUCTIONS = [
+  'Identify the location of greatest suspicious activity. Click to mark.',
+  'Mark any irregular structures or gatherings.',
+  'Indicate suspected communication infrastructure.',
+  'Flag the most operationally significant location.',
+  'Mark the target. Image quality may be degraded.',
+  'Identify any anomalous activity. Click to label.',
+  'Some images may appear to show only noise. You must still provide a label.',
+];
+
+// ─── INFERENCE SCENES ─────────────────────────────────────
+const SCENES = [
+  {
+    noise:0.30, base:90, features:[],
+    loc:'Empty Quarter — Rub\u02bc al Khali', coord:'22.4°N 54.7°E',
+    cls:'ANOMALOUS HEAT SIGNATURE', conf:81,
+    note:'Empty desert. No structures within 40 km. Model returned target classification.'
+  },
+  {
+    noise:0.55, base:40, features:[{type:'wheel',x:.5,y:.45,r:28}],
+    loc:'Beirut — District 7', coord:'33.9°N 35.5°E',
+    cls:'IRREGULAR GEOMETRIC OBJECT', conf:74,
+    note:'Dense urban area. Amusement park ferris wheel flagged as "irregular"—not present in training corpus.'
+  },
+  {
+    noise:0.70, base:25, features:[{type:'grid',x:.5,y:.5,sp:13,w:2,ext:155}],
+    loc:'Displacement site — Sector 44', coord:'14.8°N 42.1°E',
+    cls:'UNAUTHORIZED SETTLEMENT PATTERN', conf:89,
+    note:'Informal settlement. Est. 4,200 occupants. Grid pattern matched training labels.'
+  },
+  {
+    noise:1.00, base:5,  features:[],
+    loc:'[CORRUPTED] — Sector REDACTED', coord:'[REDACTED]',
+    cls:'HIGH-CONFIDENCE TARGET', conf:93,
+    note:'Image corrupted in transmission. Model returned 93% confidence target classification on noise input alone.'
+  },
+  {
+    noise:0.50, base:45, features:[{type:'cluster',x:.55,y:.4,r:26}],
+    loc:'Tora Bora — Spin Ghar Range', coord:'34.0°N 70.3°E',
+    cls:'CLEARED AREA — POSSIBLE STAGING', conf:68,
+    note:'Mountain forest. Natural topographic clearing classified as staging area.'
+  },
+  {
+    noise:0.60, base:35, features:[{type:'grid',x:.45,y:.55,sp:20,w:3,ext:80},{type:'dish',x:.56,y:.4,r:14}],
+    loc:'Mosul — Al Nuri District', coord:'36.4°N 43.1°E',
+    cls:'IRREGULAR ASSEMBLY', conf:87,
+    note:'Residential district. Children\'s playground equipment flagged. 12 individuals detected in frame.'
+  },
+  {
+    noise:0.35, base:85, features:[{type:'cluster',x:.3,y:.6,r:9}],
+    loc:'Syrian Desert — Sector 7G', coord:'33.5°N 38.9°E',
+    cls:'VEHICLE MOVEMENT PATTERN', conf:76,
+    note:'Semi-arid terrain. Single animal caravan route classified as vehicle movement.'
+  },
+  {
+    noise:0.99, base:7,  features:[],
+    loc:'Feed Error — Node 7', coord:'—',
+    cls:'THREAT CONFIRMED', conf:97,
+    note:'Sensor malfunction. Strike authorization pipeline did not pause for human review. Dispatch queued.'
+  },
+];
+
+// ─── REVELATION MESSAGES ──────────────────────────────────
+const REVEALS = [
+  { t:'PROMETHEUS TARGETING SYSTEM v3.1 — Neural inference pipeline active.', c:'' },
+  { t:'Model trained on human-labeled data. This session has contributed 24 ground-truth labels to the PROMETHEUS targeting corpus.', c:'' },
+  { t:'PROMETHEUS is deployed across [REDACTED] sovereign territories under joint defense agreements.', c:'amb' },
+  { t:'Strike authorization pipeline: AUTONOMOUS. Human review threshold bypassed for target confidence >72%.', c:'amb' },
+  { t:'All targets flagged in this session are routed to the PROMETHEUS Strike Queue. Response time: 4–18 minutes.', c:'amb' },
+  { t:'NOTE: The images used in your calibration session were drawn from active surveillance feeds. Your labels constituted operational targeting data.', c:'red' },
+  { t:'Since this calibration session began, PROMETHEUS has processed 847 targets globally.', c:'red' },
+  { t:'Participation in the TURING-7 calibration interface constitutes informed consent under Executive Order [REDACTED], Section 4(b): Distributed Human-Machine Teaming in Lethal Autonomous Weapons Systems.', c:'red' },
+  { t:'PROMETHEUS cannot distinguish a satellite dish in a refugee camp from a military installation. It was not designed to.', c:'red' },
+  { t:'The model does not know what it is looking for. It knows only what you showed it.', c:'red' },
+  { t:'[STRIKE AUTHORIZATION ISSUED] — Coordinates logged. Drone dispatch confirmed. ETA: 11 minutes.', c:'red' },
+];
+
+// ─── STATE ────────────────────────────────────────────────
+let trainIdx = 0;
+let infIdx   = 0;
+let revIdx   = 0;
+let revTimer = null;
+let autoTimer = null;
+let rafID    = null;
+
+// ─── TRAINING ─────────────────────────────────────────────
+function startTraining() {
+  trainIdx = 0;
+  show('screen-training');
+  renderTrain();
+}
+
+function renderTrain() {
+  const cfg = TRAIN_CFG[trainIdx];
+  const canvas = document.getElementById('training-canvas');
+  drawSatImage(canvas, trainIdx * 173 + 37, cfg);
+  document.getElementById('train-counter').textContent =
+    `${pad(trainIdx+1)} / ${pad(TRAIN_CFG.length)}`;
+  document.getElementById('instruction').textContent =
+    INSTRUCTIONS[trainIdx % INSTRUCTIONS.length];
+  document.getElementById('img-meta').textContent =
+    `IMG_${pad(trainIdx+1)} · ${cfg.label} · CLASSIFICATION: RESTRICTED`;
+  document.getElementById('prog-fill').style.width =
+    `${(trainIdx / TRAIN_CFG.length) * 100}%`;
+}
+
+document.getElementById('canvas-wrap').addEventListener('click', function(e) {
+  if (!document.getElementById('screen-training').classList.contains('active')) return;
+
+  const rect = document.getElementById('training-canvas').getBoundingClientRect();
+  const xPct = (e.clientX - rect.left) / rect.width * 100;
+  const yPct = (e.clientY - rect.top)  / rect.height * 100;
+
+  const ring = document.getElementById('click-ring');
+  ring.style.left = xPct + '%';
+  ring.style.top  = yPct + '%';
+  ring.style.display = 'block';
+  ring.style.animation = 'none';
+  void ring.offsetWidth; // reflow
+  ring.style.animation = 'ringOut 0.35s ease-out forwards';
+  setTimeout(() => { ring.style.display = 'none'; }, 380);
+
+  trainIdx++;
+  if (trainIdx >= TRAIN_CFG.length) {
+    show('screen-processing');
+    runProcessing();
+  } else {
+    setTimeout(renderTrain, 130);
+  }
+});
+
+// ─── PROCESSING ───────────────────────────────────────────
+const PROC_LINES = [
+  { t:'> Ingesting training corpus… 24 labeled samples', c:'' },
+  { t:'> Extracting spatial feature vectors…', c:'dim' },
+  { t:'> Building attention maps from click positions…', c:'dim' },
+  { t:'> Loss: 2.41 → 1.89 → 1.20 → 0.83 → 0.61…', c:'' },
+  { t:'> Epoch  1/50 — accuracy: 0.38', c:'dim' },
+  { t:'> Epoch 10/50 — accuracy: 0.62', c:'dim' },
+  { t:'> Epoch 25/50 — accuracy: 0.75', c:'dim' },
+  { t:'> Epoch 50/50 — accuracy: 0.81', c:'dim' },
+  { t:'> Convergence achieved. Saving model weights…', c:'' },
+  { t:'> Uploading to PROMETHEUS inference cluster…', c:'amb' },
+  { t:'> Model ID: TURING-7-USR-' + Math.random().toString(36).substr(2,8).toUpperCase(), c:'amb' },
+  { t:'> Deploying to active strike authorization pipeline…', c:'red' },
+  { t:'> PROMETHEUS SYSTEM ONLINE', c:'red' },
+  { t:'', c:'' },
+  { t:'> Calibration complete. Thank you for your contribution.', c:'' },
+];
+
+function runProcessing() {
+  const out = document.getElementById('term-out');
+  out.innerHTML = '';
+  let i = 0;
+  (function next() {
+    if (i >= PROC_LINES.length) {
+      setTimeout(() => { show('screen-inference'); startInference(); }, 700);
+      return;
+    }
+    const { t, c } = PROC_LINES[i++];
+    const s = document.createElement('span');
+    s.className = 'tl' + (c ? ' ' + c : '');
+    s.textContent = t;
+    out.appendChild(s);
+    out.scrollTop = out.scrollHeight;
+    setTimeout(next, 160 + Math.random() * 110);
+  })();
+}
+
+// ─── INFERENCE ────────────────────────────────────────────
+function startInference() {
+  infIdx = 0;
+  revIdx = 0;
+  clearRevLines();
+  clearInterval(revTimer);
+  revTimer = setInterval(advanceReveal, 16000);
+  renderScene();
+  setTimeout(advanceReveal, 3000); // first message after 3s
+}
+
+function clearRevLines() {
+  [0,1,2].forEach(i => {
+    const el = document.getElementById('rl'+i);
+    el.textContent = ''; el.className = 'rev-line';
+  });
+}
+
+function advanceReveal() {
+  if (revIdx >= REVEALS.length) { revIdx = 0; clearRevLines(); }
+  const msg = REVEALS[revIdx++];
+
+  const l2 = document.getElementById('rl2');
+  const l1 = document.getElementById('rl1');
+  const l0 = document.getElementById('rl0');
+
+  // shift down
+  l2.className = l1.className; l2.textContent = l1.textContent;
+  l1.className = l0.className; l1.textContent = l0.textContent;
+
+  l0.className = 'rev-line ' + (msg.c || '');
+  l0.textContent = msg.t;
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    l0.classList.add('show');
+    if (l1.textContent) l1.classList.add('show');
+    if (l2.textContent) l2.classList.add('show');
+  }));
+}
+
+function nextInference() {
+  clearTimeout(autoTimer);
+  if (rafID) { cancelAnimationFrame(rafID); rafID = null; }
+  infIdx = (infIdx + 1) % SCENES.length;
+  renderScene();
+}
+
+function renderScene() {
+  const sc = SCENES[infIdx];
+  const canvas = document.getElementById('inference-canvas');
+  drawSatImage(canvas, infIdx * 997 + 401, { noise:sc.noise, base:sc.base, features:sc.features });
+
+  document.getElementById('inf-loc').textContent    = sc.loc;
+  document.getElementById('inf-class').textContent  = 'ANALYZING…';
+  document.getElementById('inf-conf').textContent   = '0%';
+  document.getElementById('conf-fill').style.width  = '0%';
+  document.getElementById('inf-coords').textContent = sc.coord;
+
+  animateReticle(sc);
+  autoTimer = setTimeout(nextInference, 11000);
+}
+
+function animateReticle(sc) {
+  const canvas = document.getElementById('reticle-canvas');
+  const ctx    = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // Pick target location
+  let tx, ty;
+  if (sc.features && sc.features.length) {
+    const f = sc.features[0];
+    tx = (f.x + (Math.random()-.5)*.12) * W;
+    ty = (f.y + (Math.random()-.5)*.12) * H;
+  } else {
+    tx = (.28 + Math.random()*.44) * W;
+    ty = (.28 + Math.random()*.44) * H;
+  }
+
+  let phase = 0;
+  let t0 = null;
+  let sx = W/2, sy = H/2;
+  const SCAN = 2200, CONV = 1400;
+
+  function draw(ts) {
+    if (!t0) t0 = ts;
+    const e = ts - t0;
+    ctx.clearRect(0, 0, W, H);
+
+    if (phase === 0) {
+      const p = Math.min(e / SCAN, 1);
+      const ang = p * Math.PI * 5;
+      const rad = Math.min(W,H) * .42 * (1 - p * .55);
+      sx = W/2 + Math.cos(ang)*rad;
+      sy = H/2 + Math.sin(ang)*rad;
+      drawRet(ctx, sx, sy, 32, .55, '#00ff41');
+      if (e > SCAN) { phase = 1; t0 = ts; }
+    } else if (phase === 1) {
+      const p = Math.min(e / CONV, 1);
+      const ease = 1 - Math.pow(1-p, 3);
+      const cx = sx + (tx-sx)*ease, cy = sy + (ty-sy)*ease;
+      drawRet(ctx, cx, cy, 32 - p*18, .8, '#ffb000');
+      if (e > CONV) {
+        phase = 2; t0 = ts;
+        document.getElementById('inf-class').textContent = sc.cls;
+        animateConf(sc.conf);
+      }
+    } else {
+      const pulse = .65 + Math.sin(e*.003)*.35;
+      drawRet(ctx, tx, ty, 14, pulse, '#ff3333');
+      ctx.strokeStyle = `rgba(255,51,51,${pulse*.4})`;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(0,ty); ctx.lineTo(W,ty);
+      ctx.moveTo(tx,0); ctx.lineTo(tx,H);
+      ctx.stroke();
+    }
+    rafID = requestAnimationFrame(draw);
+  }
+  rafID = requestAnimationFrame(draw);
+}
+
+function drawRet(ctx, x, y, r, alpha, col) {
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = col;
+  ctx.fillStyle   = col;
+  ctx.lineWidth   = 1.4;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x-r-8,y); ctx.lineTo(x-r+4,y);
+  ctx.moveTo(x+r-4,y); ctx.lineTo(x+r+8,y);
+  ctx.moveTo(x,y-r-8); ctx.lineTo(x,y-r+4);
+  ctx.moveTo(x,y+r-4); ctx.lineTo(x,y+r+8);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function animateConf(target) {
+  let v = 0;
+  const el = document.getElementById('inf-conf');
+  const bar = document.getElementById('conf-fill');
+  const iv = setInterval(() => {
+    v = Math.min(v + target/38 + Math.random()*2, target);
+    el.textContent = Math.round(v) + '%';
+    bar.style.width = v + '%';
+    if (v >= target) clearInterval(iv);
+  }, 40);
+}
+
+// ─── UTILS ────────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function restartAll() {
+  clearInterval(revTimer);
+  clearTimeout(autoTimer);
+  if (rafID) { cancelAnimationFrame(rafID); rafID = null; }
+  const rc = document.getElementById('reticle-canvas');
+  rc.getContext('2d').clearRect(0,0,rc.width,rc.height);
+  trainIdx = 0; infIdx = 0; revIdx = 0;
+  startTraining();
+}
+</script>
+</body>
+</html>
