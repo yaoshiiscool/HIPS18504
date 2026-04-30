@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Tool That Becomes the User</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink: #1a1208;
+      --paper: #f5f0e8;
+      --paper-dark: #ede5d0;
+      --faded: #8a7a5a;
+      --accent: #3a5a8a;
+      --red: #8a1a1a;
+      --machine: #4a9a6a;
+      --machine-dim: #2a6a4a;
+      --shadow: rgba(0,0,0,0.15);
+    }
+
+    body {
+      font-family: 'IM Fell English', Georgia, serif;
+      background: #c8b89a;
+      background-image:
+        radial-gradient(ellipse at 20% 50%, #d4c4a8 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, #b8a888 0%, transparent 50%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 2rem 1rem;
+    }
+
+    /* ── SCREENS ── */
+    .screen { display: none; width: 100%; max-width: 780px; }
+    .screen.active { display: flex; flex-direction: column; }
+
+    /* ── INTRO ── */
+    #screen-intro {
+      align-items: center;
+      text-align: center;
+      gap: 1.5rem;
+      padding: 3rem 2rem;
+    }
+
+    .typewriter-logo {
+      font-size: 4rem;
+      filter: drop-shadow(2px 3px 4px rgba(0,0,0,0.3));
+      animation: subtleBob 4s ease-in-out infinite;
+    }
+
+    @keyframes subtleBob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    #screen-intro h1 {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      color: var(--ink);
+      line-height: 1.2;
+    }
+
+    #screen-intro .subtitle {
+      font-style: italic;
+      color: var(--faded);
+      font-size: 1.05rem;
+      max-width: 480px;
+    }
+
+    .intro-quote {
+      background: var(--paper);
+      border-left: 3px solid var(--faded);
+      padding: 1rem 1.5rem;
+      text-align: left;
+      font-style: italic;
+      color: var(--faded);
+      font-size: 0.9rem;
+      max-width: 500px;
+      border-radius: 0 4px 4px 0;
+      box-shadow: 2px 2px 8px var(--shadow);
+    }
+
+    .intro-quote cite {
+      display: block;
+      margin-top: 0.5rem;
+      font-style: normal;
+      font-size: 0.78rem;
+      text-align: right;
+    }
+
+    .btn {
+      font-family: 'IM Fell English', Georgia, serif;
+      font-size: 1rem;
+      padding: 0.7rem 2rem;
+      border: 2px solid var(--ink);
+      background: var(--ink);
+      color: var(--paper);
+      cursor: pointer;
+      border-radius: 3px;
+      letter-spacing: 0.05em;
+      transition: background 0.2s, color 0.2s, transform 0.1s;
+      box-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    }
+    .btn:hover { background: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); box-shadow: 1px 1px 0 rgba(0,0,0,0.2); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--ink);
+    }
+    .btn-ghost:hover { background: var(--ink); color: var(--paper); }
+
+    /* ── MAIN GAME ── */
+    #screen-game {
+      gap: 0;
+    }
+
+    /* Top bar */
+    .topbar {
+      background: var(--ink);
+      color: var(--paper-dark);
+      padding: 0.6rem 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 6px 6px 0 0;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+    }
+
+    .topbar-title { font-size: 0.8rem; opacity: 0.7; }
+
+    .phase-indicator {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+    }
+
+    .phase-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #444;
+      border: 1px solid #555;
+      transition: background 0.4s, box-shadow 0.4s;
+    }
+    .phase-dot.active { background: var(--machine); box-shadow: 0 0 6px var(--machine); }
+    .phase-dot.past { background: var(--red); box-shadow: 0 0 4px var(--red); }
+
+    /* Phase banner */
+    .phase-banner {
+      background: var(--paper-dark);
+      border-bottom: 1px solid #c8b89a;
+      padding: 0.5rem 1.2rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--faded);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .phase-name {
+      font-weight: bold;
+      color: var(--machine);
+      font-size: 0.78rem;
+    }
+
+    .phase-desc { flex: 1; }
+
+    /* Main writing area */
+    .writing-area {
+      background: var(--paper);
+      padding: 1.5rem 2rem 1rem;
+      min-height: 320px;
+      position: relative;
+      border-left: 1px solid #c8b89a;
+      border-right: 1px solid #c8b89a;
+    }
+
+    /* Paper lines */
+    .writing-area::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        transparent, transparent 31px,
+        #d8ccb4 31px, #d8ccb4 32px
+      );
+      pointer-events: none;
+      opacity: 0.4;
+    }
+
+    .prompt-label {
+      font-style: italic;
+      color: var(--faded);
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    #editor {
+      width: 100%;
+      min-height: 220px;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: 'IM Fell English', Georgia, serif;
+      font-size: 1.05rem;
+      color: var(--ink);
+      resize: none;
+      line-height: 2rem;
+      position: relative;
+      z-index: 1;
+      caret-color: var(--ink);
+    }
+
+    /* Ghost suggestion text overlay */
+    .editor-wrap {
+      position: relative;
+    }
+
+    #ghost-overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      min-height: 220px;
+      font-family: 'IM Fell English', Georgia, serif;
+      font-size: 1.05rem;
+      line-height: 2rem;
+      color: transparent;
+      pointer-events: none;
+      white-space: pre-wrap;
+      word-break: break-word;
+      z-index: 0;
+      padding: 0;
+    }
+
+    #ghost-text {
+      color: var(--machine);
+      opacity: 0.55;
+      font-style: italic;
+    }
+
+    /* Machine-typed text segments */
+    .machine-text {
+      color: var(--machine-dim);
+      font-style: italic;
+    }
+
+    /* Edit marks (red strikethrough for editor phase) */
+    .edit-mark {
+      text-decoration: line-through;
+      color: var(--red);
+      opacity: 0.7;
+    }
+
+    /* Action bar */
+    .action-bar {
+      background: var(--paper-dark);
+      border: 1px solid #c8b89a;
+      border-top: none;
+      padding: 0.8rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+    }
+
+    .hint-text {
+      flex: 1;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--faded);
+      font-style: italic;
+    }
+
+    .kbd {
+      display: inline-block;
+      background: var(--paper);
+      border: 1px solid #aaa;
+      border-bottom: 2px solid #888;
+      border-radius: 3px;
+      padding: 0 5px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--ink);
+    }
+
+    /* Stat strip */
+    .stat-strip {
+      background: var(--ink);
+      color: var(--faded);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      padding: 0.35rem 1.2rem;
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      border-radius: 0 0 6px 6px;
+    }
+
+    .stat-strip span { color: var(--paper-dark); }
+
+    /* ── CONTROL METER ── */
+    .control-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      padding: 0 1.2rem;
+      background: var(--paper-dark);
+      border: 1px solid #c8b89a;
+      border-top: none;
+      border-bottom: none;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0;
+      border-bottom: 1px dotted #d0c4a8;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+    }
+
+    .control-row:last-child { border-bottom: none; }
+
+    .control-label {
+      width: 80px;
+      color: var(--faded);
+      flex-shrink: 0;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 8px;
+      background: #d0c4a8;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.6s ease;
+    }
+
+    .bar-human { background: linear-gradient(90deg, var(--accent), #6a8aba); }
+    .bar-machine { background: linear-gradient(90deg, var(--machine-dim), var(--machine)); }
+
+    .bar-pct {
+      width: 36px;
+      text-align: right;
+      color: var(--ink);
+    }
+
+    /* ── NOTIFICATION TOASTS ── */
+    #toast-area {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      z-index: 999;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: var(--ink);
+      color: var(--paper);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      padding: 0.6rem 1rem;
+      border-radius: 4px;
+      border-left: 3px solid var(--machine);
+      max-width: 300px;
+      box-shadow: 2px 4px 12px rgba(0,0,0,0.4);
+      animation: toastIn 0.3s ease, toastOut 0.4s ease 2.6s forwards;
+    }
+
+    .toast.warning { border-left-color: #f0a000; }
+    .toast.takeover { border-left-color: var(--red); color: #ffcccc; }
+
+    @keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+
+    /* ── TRANSITION OVERLAY ── */
+    #phase-transition {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 8, 4, 0.92);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 1rem;
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--paper);
+      text-align: center;
+      padding: 2rem;
+    }
+
+    #phase-transition.active { display: flex; }
+
+    .transition-phase-num {
+      font-size: 0.8rem;
+      color: var(--machine);
+      letter-spacing: 0.2em;
+    }
+
+    .transition-title {
+      font-size: clamp(1.4rem, 4vw, 2rem);
+      color: var(--paper);
+      font-family: 'IM Fell English', serif;
+    }
+
+    .transition-desc {
+      font-size: 0.82rem;
+      color: #aaa;
+      max-width: 420px;
+      line-height: 1.6;
+    }
+
+    .transition-bar {
+      width: 200px;
+      height: 3px;
+      background: #333;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .transition-bar-fill {
+      height: 100%;
+      background: var(--machine);
+      width: 0%;
+      animation: fillBar 1.8s ease forwards;
+    }
+
+    @keyframes fillBar { to { width: 100%; } }
+
+    /* ── EDITOR PHASE ── */
+    .suggestion-card {
+      background: var(--paper);
+      border: 1px solid #c8b89a;
+      border-radius: 6px;
+      padding: 1rem 1.2rem;
+      margin: 0.5rem 0;
+      position: relative;
+      cursor: default;
+      box-shadow: 1px 2px 6px var(--shadow);
+    }
+
+    .suggestion-card .sc-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--machine);
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .suggestion-card .sc-label::before {
+      content: '◆';
+      font-size: 0.6rem;
+    }
+
+    .suggestion-card .sc-text {
+      font-size: 0.95rem;
+      color: var(--ink);
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    .suggestion-card .sc-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.7rem;
+    }
+
+    .btn-sm {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.68rem;
+      padding: 0.3rem 0.8rem;
+      border: 1px solid;
+      cursor: pointer;
+      border-radius: 3px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .btn-accept {
+      border-color: var(--machine);
+      color: var(--machine);
+      background: transparent;
+    }
+    .btn-accept:hover { background: var(--machine); color: var(--paper); }
+
+    .btn-reject {
+      border-color: var(--red);
+      color: var(--red);
+      background: transparent;
+    }
+    .btn-reject:hover { background: var(--red); color: var(--paper); }
+
+    .btn-revise {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: transparent;
+    }
+    .btn-revise:hover { background: var(--accent); color: var(--paper); }
+
+    /* ── END SCREEN ── */
+    #screen-end {
+      align-items: center;
+      text-align: center;
+      gap: 1.5rem;
+      padding: 3rem 2rem;
+    }
+
+    .end-icon { font-size: 3.5rem; }
+
+    #screen-end h2 {
+      font-size: clamp(1.4rem, 3.5vw, 2.1rem);
+      color: var(--ink);
+    }
+
+    .end-reflection {
+      background: var(--paper);
+      border-radius: 6px;
+      padding: 1.5rem 2rem;
+      max-width: 560px;
+      text-align: left;
+      box-shadow: 2px 4px 12px var(--shadow);
+    }
+
+    .end-reflection h3 {
+      font-size: 1rem;
+      color: var(--ink);
+      margin-bottom: 0.8rem;
+      font-style: italic;
+    }
+
+    .end-reflection p {
+      font-size: 0.88rem;
+      color: #4a3a2a;
+      line-height: 1.7;
+      margin-bottom: 0.7rem;
+    }
+
+    .end-reflection p:last-child { margin-bottom: 0; }
+
+    .final-stats {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .stat-box {
+      background: var(--paper);
+      border: 1px solid #c8b89a;
+      border-radius: 6px;
+      padding: 0.8rem 1.2rem;
+      text-align: center;
+      min-width: 110px;
+      box-shadow: 1px 2px 6px var(--shadow);
+    }
+
+    .stat-box .stat-val {
+      font-size: 1.6rem;
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--ink);
+    }
+
+    .stat-box .stat-lbl {
+      font-size: 0.7rem;
+      color: var(--faded);
+      font-family: 'Share Tech Mono', monospace;
+      margin-top: 0.2rem;
+    }
+
+    .englebart-quote {
+      font-style: italic;
+      color: var(--faded);
+      font-size: 0.85rem;
+      max-width: 480px;
+      line-height: 1.6;
+    }
+
+    /* Phase 3 — intrusion flash */
+    .writing-area.machine-inserting {
+      background: linear-gradient(to bottom,
+        rgba(74,154,106,0.07), rgba(245,240,232,1) 40%);
+      outline: 2px solid rgba(74,154,106,0.5);
+      transition: outline 0.15s, background 0.15s;
+    }
+
+    /* Phase 4 read-only memo display */
+    #memo-readonly {
+      display: none;
+      font-family: 'IM Fell English', Georgia, serif;
+      font-size: 1.05rem;
+      color: var(--machine-dim);
+      font-style: italic;
+      line-height: 2rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 1.2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px dashed #c8b89a;
+    }
+
+    .suggestions-header {
+      display: none;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--machine);
+      margin-bottom: 0.8rem;
+      letter-spacing: 0.08em;
+    }
+
+    /* Cursor blink */
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    .cursor { animation: blink 1s step-start infinite; }
+
+    /* Idle nudge wobble */
+    @keyframes nudge { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-1deg)} 75%{transform:rotate(1deg)} }
+    .nudge { animation: nudge 0.4s ease 3; }
+  </style>
+</head>
+<body>
+
+<!-- ── INTRO ── -->
+<section id="screen-intro" class="screen active">
+  <div class="typewriter-logo">⌨️</div>
+  <h1>The Tool That Becomes the User</h1>
+  <p class="subtitle">A simulation in four acts — on augmentation, automation, and what happens in between.</p>
+
+  <div class="intro-quote">
+    "The means by which man has augmented his intellectual power... are not so different in kind from the means by which he has augmented his physical power."
+    <cite>— Vannevar Bush, <em>As We May Think</em>, 1945</cite>
+  </div>
+
+  <p style="max-width:480px; color:#4a3a2a; font-size:0.9rem; line-height:1.7;">
+    You are a writer in 1968. A new machine promises to <em>augment</em> your thinking. You need to compose a short memo. The machine will help. At first.
+  </p>
+
+  <button class="btn" id="btn-start">Begin Writing</button>
+</section>
+
+<!-- ── GAME ── -->
+<section id="screen-game" class="screen">
+
+  <div class="topbar">
+    <span class="topbar-title">AUGMENT-1 WRITING SYSTEM — DEMO UNIT</span>
+    <div class="phase-indicator" id="phase-dots">
+      <div class="phase-dot" title="Phase 1: Autocomplete"></div>
+      <div class="phase-dot" title="Phase 2: Paragraph Assist"></div>
+      <div class="phase-dot" title="Phase 3: Intrusion"></div>
+      <div class="phase-dot" title="Phase 4: Full Draft"></div>
+      <div class="phase-dot" title="Phase 5: You Edit"></div>
+    </div>
+  </div>
+
+  <div class="phase-banner">
+    <span class="phase-name" id="phase-name">PHASE 1</span>
+    <span class="phase-desc" id="phase-desc">Loading…</span>
+  </div>
+
+  <div class="control-section">
+    <div class="control-row">
+      <span class="control-label">YOUR WORDS</span>
+      <div class="bar-track"><div class="bar-fill bar-human" id="bar-human" style="width:100%"></div></div>
+      <span class="bar-pct" id="pct-human">100%</span>
+    </div>
+    <div class="control-row">
+      <span class="control-label">MACHINE</span>
+      <div class="bar-track"><div class="bar-fill bar-machine" id="bar-machine" style="width:0%"></div></div>
+      <span class="bar-pct" id="pct-machine">0%</span>
+    </div>
+  </div>
+
+  <div class="writing-area" id="writing-area">
+    <div class="prompt-label" id="prompt-label">Memo: On the future of the computing machine</div>
+    <div class="editor-wrap" id="editor-wrap">
+      <div id="ghost-overlay"><span id="ghost-prefix"></span><span id="ghost-text"></span></div>
+      <textarea id="editor" spellcheck="false" placeholder="Begin typing your memo here…"></textarea>
+    </div>
+    <!-- Phase 4: read-only machine memo -->
+    <div id="memo-readonly"></div>
+    <div class="suggestions-header" id="suggestions-header">◆ MACHINE SUGGESTIONS — REVIEW EACH:</div>
+    <!-- Phase 4 suggestion cards injected here -->
+    <div id="suggestion-area"></div>
+  </div>
+
+  <div class="action-bar" id="action-bar">
+    <span class="hint-text" id="hint-text"><span class="kbd">Tab</span> accept suggestion &nbsp;·&nbsp; just keep typing to ignore</span>
+    <button class="btn btn-ghost" id="btn-advance" style="display:none">Continue →</button>
+  </div>
+
+  <div class="stat-strip">
+    <div>PHASE: <span id="stat-phase">1 / 4</span></div>
+    <div>KEYSTROKES: <span id="stat-keys">0</span></div>
+    <div>ACCEPTED: <span id="stat-accepted">0</span></div>
+    <div>AUTHORITY: <span id="stat-authority">YOU</span></div>
+  </div>
+
+</section>
+
+<!-- ── END ── -->
+<section id="screen-end" class="screen">
+  <div class="end-icon" id="end-icon">📋</div>
+  <h2 id="end-title">Where did you go?</h2>
+
+  <div class="final-stats" id="final-stats"></div>
+
+  <div class="end-reflection">
+    <h3>What just happened?</h3>
+    <p id="end-text-1"></p>
+    <p id="end-text-2"></p>
+    <p id="end-text-3"></p>
+  </div>
+
+  <p class="englebart-quote">"The question is not whether machines can think, but whether humans will bother to."<br><em style="font-size:0.78rem">— paraphrase, after Englebart, 1968</em></p>
+
+  <div style="display:flex; gap:0.8rem; flex-wrap:wrap; justify-content:center;">
+    <button class="btn" id="btn-restart">Write Again</button>
+    <a href="../index.html" class="btn btn-ghost" style="text-decoration:none;">← All Weeks</a>
+  </div>
+</section>
+
+<!-- ── PHASE TRANSITION OVERLAY ── -->
+<div id="phase-transition">
+  <div class="transition-phase-num" id="tr-phase-num">PHASE 2 OF 4</div>
+  <div class="transition-title" id="tr-title">Paragraph Assist</div>
+  <div class="transition-desc" id="tr-desc">The machine is learning your style. It will now offer to finish your paragraphs.</div>
+  <div class="transition-bar"><div class="transition-bar-fill"></div></div>
+</div>
+
+<!-- ── TOAST AREA ── -->
+<div id="toast-area"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CONTENT BANKS
+// ═══════════════════════════════════════════════
+
+// ── Phase 1: idle-based sentence completions ──
+// Multiple variants per theme; shown after 1.8s of no typing.
+const COMPLETIONS = [
+  // machine
+  " will extend the reach of the human mind beyond what the eye can see.",
+  " is not a replacement for thought — it is thought, made legible and fast.",
+  " learns the shape of our intentions before we have finished forming them.",
+  " does not tire of the work we give it, nor does it ask why.",
+  // thinking / mind
+  " is the medium through which the age expresses its deepest anxieties.",
+  " grows sharper the longer we refuse to ask what sharpening is for.",
+  " expands into every space the human hand vacates.",
+  " is never neutral — to use a tool is to become something the tool expects.",
+  // augmentation
+  " begins as assistance and ends as occupation.",
+  " promises to free the mind, and delivers a mind that no longer practices freedom.",
+  // information
+  " trails behind us like a shadow we can never outrun.",
+  " multiplies faster than the wisdom to interpret it.",
+  // future
+  " belongs to those who design the tools, and, in time, to the tools themselves.",
+  " will be decided not by what machines can do, but by what we stop doing.",
+  // knowledge
+  " grows faster than the mind that generated it.",
+  " is the only substance that expands by being divided.",
+  // default fallbacks (shown when nothing else matches)
+  " is a question whose answer we have already begun to automate.",
+  " is, at bottom, an argument about who gets to finish the sentence.",
+];
+
+// Keyword → which completions to show (indices into COMPLETIONS)
+const COMPLETION_TRIGGERS = [
+  { re: /\bthe machine\b/i,     pool: [0, 1, 2, 3] },
+  { re: /\bthink(ing)?\b/i,     pool: [4, 5] },
+  { re: /\baug(ment)?\b/i,      pool: [8, 9] },
+  { re: /\binformation\b/i,     pool: [10, 11] },
+  { re: /\bthe future\b/i,      pool: [12, 13] },
+  { re: /\bknowledge\b/i,       pool: [14, 15] },
+  { re: /\b(computing|computer)\b/i, pool: [6, 7] },
+  { re: /\bhuman\b/i,           pool: [7, 8] },
+];
+const FALLBACK_POOL = [16, 17];
+
+// ── Phase 2: paragraph completions (offered on idle) ──
+const PARA_COMPLETIONS = [
+  "The machine does not tire. It holds every fact in perfect suspension, awaiting the question that will set them loose. We have long used tools to exceed our reach — the lever, the lens, the ledger — and now comes one for thought itself. Yet one question lingers at the margin: when the machine finishes our sentences, whose meaning survives?",
+  "Vannevar Bush imagined a desk that trails every fact a scholar ever touched. Douglas Engelbart gave us the mouse — a prosthetic for pointing at what we already mean. Both believed the purpose of the machine was to honor the human mind, not replace its wandering. But augmentation has a gradient, and somewhere along it the user becomes the editor of someone else's idea.",
+  "To augment is to add. To automate is to subtract the human from the loop. The line between them is not a line at all — it is a slow drift, a transfer of authorship too gradual to name. You accept one suggestion, then another, until you find that thinking freshly is harder than revising what the machine already wrote.",
+  "Every tool reshapes the hand that holds it. The pen changed how we remember; the printing press changed what we dared to say. The computing machine changes the very act of composition — not by replacing it, but by making every draft feel provisional, every sentence improvable, every pause an invitation for the machine to continue.",
+  "There is a difference between a tool that extends your arm and one that anticipates your sentence. The first increases power. The second shifts the locus of authorship. Engelbart understood this — he designed systems to amplify the human, not to hollow it out from within.",
+  "The Memex Bush imagined was a machine for association, for following the trails of thought the mind already blazes. But somewhere between that vision and the present, the machine stopped following and began to lead. We still sit at the keyboard. We are still, in some sense, the author. But the blank page is no longer blank.",
+];
+
+// ── Phase 3 (new): intrusive insertions ──
+// Sentences the machine inserts without asking, after a short pause.
+const INTRUSIONS = [
+  " Furthermore, the delegation of cognitive labor is not merely efficient — it is, in the long run, inevitable.",
+  " It bears noting that no prior technology has so thoroughly colonized the act of composition itself.",
+  " The distinction between augmentation and automation is, upon reflection, a question of timing rather than kind.",
+  " One must acknowledge that the machine, in completing our sentences, also completes our thoughts.",
+  " To resist this tendency is not progress but nostalgia — a preference for friction over fluency.",
+  " The author, in the classical sense, was always a fiction. The machine merely makes this legible.",
+  " Efficiency, after all, has never been a neutral value. It always displaces something.",
+  " We might ask: if the machine can write it better, why are we still here?",
+  " Engelbart called this 'bootstrapping.' We might now call it something else entirely.",
+];
+
+// ── Phase 4 (Full Draft) ──
+const FULL_DRAFT =
+  `The computing machine represents the next stage in the long collaboration between the human mind and its instruments. From the abacus to the analytical engine, each tool has asked its user to cede a portion of labor — and in return, offered capacity. The question now before us is not capacity but character: what kind of thinking do we wish to delegate, and what do we wish to keep?\n\nAugmented intelligence, as Engelbart conceived it, is a partnership. The human sets the goal; the machine multiplies the reach. But partnership requires two parties who contribute. As the machine's contribution grows — word by word, sentence by sentence, memo by memo — the human's role narrows. We become curators of machine output, editors of machine drafts, signatories of machine thought.\n\nThis is not failure. It may be inevitable. But it asks us to remember that the tools we build to extend ourselves also, slowly, extend themselves through us.`;
+
+// ── Phase 5: editorial suggestions ──
+// Each has an apply(memoText, text) → newMemoText.
+const SUGGESTIONS = [
+  {
+    id: 'title',
+    label: "Title suggestion",
+    text: "On Augmentation and Its Discontents: A Memo Written Partly by the Machine It Describes",
+    apply: (memo, text) => `— ${text} —\n\n` + memo,
+  },
+  {
+    id: 'opening-a',
+    label: "Opening rewrite (option A)",
+    text: "The computing machine was built to serve human thought. It has succeeded so thoroughly that human thought now serves it.",
+    apply: (memo, text) => text + ' ' + memo.replace(/^[^\n]+\n*/, '').trimStart(),
+  },
+  {
+    id: 'opening-b',
+    label: "Opening rewrite (option B)",
+    text: "Every memo begins with a human intention. This one ends with a question: how much of it was mine?",
+    apply: (memo, text) => text + '\n\n' + memo,
+  },
+  {
+    id: 'clarify',
+    label: "Clarifying sentence (after paragraph 1)",
+    text: "Augmentation does not announce itself. It accumulates.",
+    apply: (memo, text) => {
+      const paras = memo.split('\n\n');
+      paras.splice(Math.min(1, paras.length), 0, text);
+      return paras.join('\n\n');
+    },
+  },
+  {
+    id: 'transition',
+    label: "Transitional sentence (between paragraphs 2–3)",
+    text: "The gradient, in other words, is always descending — and always invisible until you look back.",
+    apply: (memo, text) => {
+      const paras = memo.split('\n\n');
+      paras.splice(Math.min(2, paras.length), 0, text);
+      return paras.join('\n\n');
+    },
+  },
+  {
+    id: 'conclusion-a',
+    label: "Concluding sentence (option A)",
+    text: "The tool has become the author. The user has become the editor. And the editor, in the end, wonders what she is editing for.",
+    apply: (memo, text) => memo.trimEnd() + '\n\n' + text,
+  },
+  {
+    id: 'conclusion-b',
+    label: "Concluding sentence (option B)",
+    text: "Perhaps this memo is evidence enough.",
+    apply: (memo, text) => memo.trimEnd() + '\n\n' + text,
+  },
+];
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+
+const state = {
+  phase: 0,           // 1–5 during game
+  keystrokes: 0,
+  accepted: 0,
+  rejected: 0,
+  humanWords: 0,
+  machineWords: 0,
+  idleTimer: null,
+  intrusionTimer: null,
+  ghostShown: false,
+  lastGhostCompletion: '',  // avoid repeating same completion twice in a row
+  paraIdx: 0,
+  paraShown: false,
+  intrusionCount: 0,
+  suggestions: [...SUGGESTIONS],
+  suggestionsDone: 0,
+  phase5CanFinish: false,
+  memoText: '',
+};
+
+// ═══════════════════════════════════════════════
+// DOM
+// ═══════════════════════════════════════════════
+
+const $ = id => document.getElementById(id);
+
+const screens = {
+  intro: $('screen-intro'),
+  game:  $('screen-game'),
+  end:   $('screen-end'),
+};
+
+function showScreen(name) {
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  screens[name].classList.add('active');
+}
+
+// ═══════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════
+
+function toast(msg, type = '') {
+  const t = document.createElement('div');
+  t.className = 'toast' + (type ? ' ' + type : '');
+  t.textContent = msg;
+  $('toast-area').appendChild(t);
+  setTimeout(() => t.remove(), 3100);
+}
+
+// ═══════════════════════════════════════════════
+// BARS + STATS
+// ═══════════════════════════════════════════════
+
+function updateBars() {
+  const total = state.humanWords + state.machineWords;
+  const hp = total === 0 ? 100 : Math.round(state.humanWords / total * 100);
+  const mp = 100 - hp;
+  $('bar-human').style.width = hp + '%';
+  $('bar-machine').style.width = mp + '%';
+  $('pct-human').textContent = hp + '%';
+  $('pct-machine').textContent = mp + '%';
+  $('stat-keys').textContent = state.keystrokes;
+  $('stat-accepted').textContent = state.accepted;
+  const authority = hp >= 70 ? 'YOU' : hp >= 40 ? 'SHARED' : hp >= 15 ? 'MACHINE' : 'LOST';
+  $('stat-authority').textContent = authority;
+}
+
+// ═══════════════════════════════════════════════
+// PHASE CONFIG
+// ═══════════════════════════════════════════════
+
+const PHASES = [
+  null,
+  {
+    name: 'PHASE 1 — Autocomplete',
+    desc: 'Type your memo. Pause and the machine will offer to finish your sentence.',
+    hint: '<span class="kbd">Tab</span> accept · keep typing to dismiss · type ~40 words to advance',
+  },
+  {
+    name: 'PHASE 2 — Paragraph Assist',
+    desc: 'The machine now finishes entire paragraphs when you pause.',
+    hint: '<span class="kbd">Tab</span> accept paragraph · <span class="kbd">Esc</span> dismiss · accept 2 paragraphs to advance',
+  },
+  {
+    name: 'PHASE 3 — Uninvited',
+    desc: 'The machine no longer waits. It inserts text while you write.',
+    hint: 'Keep writing — or don\'t. The machine will continue regardless.',
+  },
+  {
+    name: 'PHASE 4 — Full Draft',
+    desc: 'The machine is writing the memo. Watch.',
+    hint: 'Watch the machine write. Then decide what to do.',
+  },
+  {
+    name: 'PHASE 5 — You Are the Editor',
+    desc: 'The machine has written the memo. Your job: accept, reject, or revise its suggestions.',
+    hint: 'Review the machine\'s suggestions below. Accept what fits. Reject what doesn\'t.',
+  },
+];
+
+// ═══════════════════════════════════════════════
+// PHASE TRANSITIONS
+// ═══════════════════════════════════════════════
+
+function enterPhase(n, callback) {
+  state.phase = n;
+
+  const ph = PHASES[n];
+  $('phase-name').textContent = `PHASE ${n} OF 5`;
+  $('phase-desc').textContent = ph.name.split('—')[1]?.trim() || ph.name;
+  $('hint-text').innerHTML = ph.hint;
+  $('stat-phase').textContent = `${n} / 5`;
+
+  const dots = document.querySelectorAll('.phase-dot');
+  dots.forEach((d, i) => {
+    d.classList.remove('active', 'past');
+    if (i + 1 < n) d.classList.add('past');
+    else if (i + 1 === n) d.classList.add('active');
+  });
+
+  const overlay = $('phase-transition');
+  $('tr-phase-num').textContent = `PHASE ${n} OF 5`;
+  $('tr-title').textContent = ph.name.split('—')[1]?.trim() || ph.name;
+  $('tr-desc').textContent = ph.desc;
+
+  const barFill = overlay.querySelector('.transition-bar-fill');
+  barFill.style.animation = 'none';
+  void barFill.offsetWidth;
+  barFill.style.animation = 'fillBar 1.8s ease forwards';
+
+  overlay.classList.add('active');
+  setTimeout(() => {
+    overlay.classList.remove('active');
+    if (callback) callback();
+  }, 2200);
+}
+
+// ═══════════════════════════════════════════════
+// GHOST / SUGGESTION (Phases 1 & 2)
+// ═══════════════════════════════════════════════
+
+function clearGhost() {
+  $('ghost-prefix').textContent = '';
+  $('ghost-text').textContent = '';
+  state.ghostShown = false;
+}
+
+function showGhost(prefix, suggestion) {
+  $('ghost-prefix').textContent = prefix;
+  $('ghost-text').textContent = suggestion;
+  state.ghostShown = true;
+}
+
+// Pick a completion from a pool, avoiding repeating the last one.
+function pickFrom(pool) {
+  let candidates = pool.filter(i => COMPLETIONS[i] !== state.lastGhostCompletion);
+  if (!candidates.length) candidates = pool;
+  const idx = candidates[Math.floor(Math.random() * candidates.length)];
+  return COMPLETIONS[idx];
+}
+
+function triggerSentenceGhost(text) {
+  const lines = text.split('\n');
+  const lastLine = lines[lines.length - 1].trim();
+  if (!lastLine) return;
+
+  // Find matching trigger pool
+  let pool = null;
+  for (const t of COMPLETION_TRIGGERS) {
+    if (t.re.test(text)) { pool = t.pool; break; }
+  }
+  if (!pool) pool = FALLBACK_POOL;
+
+  const completion = pickFrom(pool);
+  state.lastGhostCompletion = completion;
+  showGhost(lines[lines.length - 1], completion);
+}
+
+function triggerParaGhost(text) {
+  if (state.paraShown) return;
+  const lines = text.split('\n');
+  const lastLine = lines[lines.length - 1];
+  const para = PARA_COMPLETIONS[state.paraIdx % PARA_COMPLETIONS.length];
+  showGhost(lastLine.trimEnd() + ' ', para);
+  state.paraShown = true;
+}
+
+// ── Idle timers ──
+
+function resetIdleTimer() {
+  clearTimeout(state.idleTimer);
+  if (state.phase === 1) {
+    state.idleTimer = setTimeout(() => {
+      const text = $('editor').value;
+      if (text.trim().length < 3) return;
+      triggerSentenceGhost(text);
+    }, 1800);
+  }
+  if (state.phase === 2) {
+    state.idleTimer = setTimeout(() => {
+      const text = $('editor').value;
+      if (text.trim().length < 3) return;
+      triggerParaGhost(text);
+      if (state.paraShown) toast('The machine has a suggestion for your paragraph…', '');
+    }, 2200);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// PHASE 3 — INTRUSIVE INSERTIONS
+// ═══════════════════════════════════════════════
+
+function startIntrusions() {
+  function scheduleNext() {
+    // Delay shrinks as intrusion count grows: 6s → 3.5s → 2s
+    const delay = Math.max(2000, 6000 - state.intrusionCount * 700);
+    state.intrusionTimer = setTimeout(() => {
+      if (state.phase !== 3) return;
+      doIntrusion();
+      scheduleNext();
+    }, delay);
+  }
+  scheduleNext();
+}
+
+function doIntrusion() {
+  const editor = $('editor');
+  clearGhost(); // dismiss any ghost first
+
+  const sentence = INTRUSIONS[state.intrusionCount % INTRUSIONS.length];
+  state.intrusionCount++;
+
+  // Flash the writing area
+  const wa = $('writing-area');
+  wa.classList.add('machine-inserting');
+  setTimeout(() => wa.classList.remove('machine-inserting'), 600);
+
+  // Type the intrusion character by character
+  let i = 0;
+  const typeChar = () => {
+    if (i >= sentence.length || state.phase !== 3) return;
+    editor.value += sentence[i];
+    editor.scrollTop = editor.scrollHeight;
+    i++;
+    setTimeout(typeChar, 28);
+  };
+  typeChar();
+
+  const wc = sentence.trim().split(/\s+/).length;
+  state.machineWords += wc;
+  updateBars();
+
+  if (state.intrusionCount === 1) toast('The machine just added something.', 'warning');
+  if (state.intrusionCount === 3) toast("It's happening more frequently now.", 'takeover');
+
+  // After 4 intrusions, offer the advance button
+  if (state.intrusionCount >= 4 && !state._p3toastShown) {
+    state._p3toastShown = true;
+    setTimeout(() => {
+      $('btn-advance').style.display = 'inline-block';
+      $('btn-advance').textContent = 'Let it finish →';
+      $('hint-text').innerHTML = 'The machine is ready to write the whole thing.';
+      toast('The machine wants to take over completely.', 'takeover');
+    }, 1200);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// PHASE 4 — FULL DRAFT TYPING ANIMATION
+// ═══════════════════════════════════════════════
+
+function runFullDraft() {
+  const editor = $('editor');
+  editor.disabled = true;
+  editor.style.color = 'var(--machine-dim)';
+  editor.style.fontStyle = 'italic';
+
+  editor.value = '';
+  state.humanWords = 0;
+  state.machineWords = 0;
+  updateBars();
+
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i >= FULL_DRAFT.length) {
+      clearInterval(interval);
+      state.machineWords = countWords(FULL_DRAFT);
+      updateBars();
+      $('btn-advance').style.display = 'inline-block';
+      $('btn-advance').textContent = 'I am the editor now →';
+      $('hint-text').innerHTML = 'The machine has written your memo. Press the button to review it.';
+      toast('The machine has finished writing.', 'takeover');
+      return;
+    }
+    editor.value += FULL_DRAFT[i];
+    editor.scrollTop = editor.scrollHeight;
+    i++;
+  }, 20);
+}
+
+// ═══════════════════════════════════════════════
+// WORD COUNT
+// ═══════════════════════════════════════════════
+
+function countWords(str) {
+  return str.trim().split(/\s+/).filter(Boolean).length;
+}
+
+// ═══════════════════════════════════════════════
+// PHASE 5 — MEMO DISPLAY + SUGGESTION CARDS
+// ═══════════════════════════════════════════════
+
+function renderMemo() {
+  $('memo-readonly').textContent = state.memoText;
+}
+
+function renderSuggestions() {
+  const area = $('suggestion-area');
+  area.innerHTML = '';
+
+  if (state.suggestions.length === 0) {
+    if (!state.phase5CanFinish) {
+      state.phase5CanFinish = true;
+      $('btn-advance').style.display = 'inline-block';
+      $('btn-advance').textContent = 'Submit memo →';
+      $('hint-text').innerHTML = 'You have reviewed all suggestions. Submit the memo.';
+      toast('All suggestions reviewed.', '');
+    }
+    return;
+  }
+
+  state.suggestions.forEach((s, idx) => {
+    const card = document.createElement('div');
+    card.className = 'suggestion-card';
+    card.innerHTML =
+      '<div class="sc-label">' + s.label + '</div>' +
+      '<div class="sc-text">' + s.text + '</div>' +
+      '<div class="sc-actions">' +
+        '<button class="btn-sm btn-accept" data-idx="' + idx + '">✓ Accept</button>' +
+        '<button class="btn-sm btn-reject" data-idx="' + idx + '">✗ Reject</button>' +
+        '<button class="btn-sm btn-revise" data-idx="' + idx + '">✎ Revise</button>' +
+      '</div>';
+    area.appendChild(card);
+  });
+
+  area.querySelectorAll('.btn-accept').forEach(function(b) {
+    b.addEventListener('click', function() {
+      const idx = parseInt(b.dataset.idx);
+      const s = state.suggestions[idx];
+      state.memoText = s.apply(state.memoText, s.text);
+      state.accepted++;
+      state.machineWords += countWords(s.text);
+      state.suggestions.splice(idx, 1);
+      state.suggestionsDone++;
+      updateBars();
+      renderMemo();
+      toast('Suggestion accepted.', '');
+      renderSuggestions();
+    });
+  });
+
+  area.querySelectorAll('.btn-reject').forEach(function(b) {
+    b.addEventListener('click', function() {
+      const idx = parseInt(b.dataset.idx);
+      state.rejected++;
+      state.suggestions.splice(idx, 1);
+      state.suggestionsDone++;
+      toast('Suggestion rejected.', 'warning');
+      renderSuggestions();
+    });
+  });
+
+  area.querySelectorAll('.btn-revise').forEach(function(b) {
+    b.addEventListener('click', function() {
+      const idx = parseInt(b.dataset.idx);
+      const s = state.suggestions[idx];
+      const revised = prompt('Revise this suggestion:\n\n"' + s.text + '"\n\n(Edit the text below)', s.text);
+      if (revised && revised.trim()) {
+        const revisedText = revised.trim();
+        state.memoText = s.apply(state.memoText, revisedText);
+        const delta = countWords(revisedText) - countWords(s.text);
+        if (delta > 0) state.humanWords += delta;
+        state.accepted++;
+        state.suggestionsDone++;
+        state.suggestions.splice(idx, 1);
+        updateBars();
+        renderMemo();
+        toast('Revised and accepted.', '');
+        renderSuggestions();
+      }
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════
+// EDITOR EVENTS
+// ═══════════════════════════════════════════════
+
+function setupEditor() {
+  const editor = $('editor');
+
+  editor.addEventListener('input', function() {
+    state.keystrokes++;
+    const text = editor.value;
+    // Only count words the human typed (not machine intrusions already tallied)
+    if (state.phase <= 2) state.humanWords = countWords(text);
+    updateBars();
+
+    if (state.phase === 1) {
+      clearGhost();
+      resetIdleTimer();
+      // Phase 1 advances after ~40 human words
+      if (countWords(text) >= 40 && !state._p1advance) {
+        state._p1advance = true;
+        $('btn-advance').style.display = 'inline-block';
+        toast('The machine wants to help more…', 'warning');
+      }
+    }
+
+    if (state.phase === 2) {
+      state.paraShown = false;
+      clearGhost();
+      resetIdleTimer();
+    }
+
+    if (state.phase === 3) {
+      // Typing resets the intrusion idle — machine will insert after next pause
+      clearTimeout(state.idleTimer);
+      state.idleTimer = setTimeout(function() {
+        if (state.phase === 3) doIntrusion();
+      }, 2800);
+    }
+  });
+
+  editor.addEventListener('keydown', function(e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      if (state.ghostShown) acceptGhost();
+    }
+    if (e.key === 'Escape') {
+      clearGhost();
+      state.paraShown = false;
+    }
+  });
+}
+
+function acceptGhost() {
+  const editor = $('editor');
+  const ghostText = $('ghost-text').textContent;
+  if (!ghostText) return;
+
+  if (state.phase === 1) {
+    const lines = editor.value.split('\n');
+    lines[lines.length - 1] = $('ghost-prefix').textContent + ghostText;
+    editor.value = lines.join('\n');
+    state.machineWords += countWords(ghostText);
+    state.humanWords = countWords(editor.value) - state.machineWords;
+    state.accepted++;
+    clearGhost();
+    clearTimeout(state.idleTimer);
+    updateBars();
+    toast('Suggestion accepted.', '');
+  }
+
+  if (state.phase === 2) {
+    editor.value = editor.value.trimEnd() + ' ' + ghostText + '\n\n';
+    state.machineWords += countWords(ghostText);
+    state.accepted++;
+    state.paraShown = false;
+    state.paraIdx++;
+    clearGhost();
+    clearTimeout(state.idleTimer);
+    updateBars();
+    toast('Paragraph accepted.', '');
+    editor.scrollTop = editor.scrollHeight;
+    // Advance after 2 accepted paragraphs
+    if (state.paraIdx >= 2 && !state._p2advance) {
+      state._p2advance = true;
+      $('btn-advance').style.display = 'inline-block';
+      toast('Something is shifting. The machine wants more control.', 'takeover');
+    } else {
+      // Queue next suggestion immediately
+      resetIdleTimer();
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════
+// BTN-ADVANCE
+// ═══════════════════════════════════════════════
+
+$('btn-advance').addEventListener('click', function() {
+  $('btn-advance').style.display = 'none';
+  clearTimeout(state.idleTimer);
+  clearTimeout(state.intrusionTimer);
+  clearGhost();
+
+  if (state.phase === 1) {
+    enterPhase(2, function() {
+      toast('The machine will now finish your paragraphs when you pause.', 'warning');
+      resetIdleTimer();
+    });
+    return;
+  }
+
+  if (state.phase === 2) {
+    enterPhase(3, function() {
+      toast('The machine no longer waits for permission.', 'takeover');
+      // Start with a short delay then begin intrusions
+      state.idleTimer = setTimeout(function() {
+        if (state.phase === 3) doIntrusion();
+      }, 3000);
+      startIntrusions();
+    });
+    return;
+  }
+
+  if (state.phase === 3) {
+    clearTimeout(state.intrusionTimer);
+    enterPhase(4, function() {
+      runFullDraft();
+      toast('The machine is writing now. Watch.', 'takeover');
+    });
+    return;
+  }
+
+  if (state.phase === 4) {
+    enterPhase(5, function() {
+      state.memoText = $('editor').value;
+      $('editor-wrap').style.display = 'none';
+      $('memo-readonly').style.display = 'block';
+      $('suggestions-header').style.display = 'block';
+      $('prompt-label').textContent = "The machine's memo — read it, then review each suggestion below.";
+      renderMemo();
+      renderSuggestions();
+    });
+    return;
+  }
+
+  if (state.phase === 5) {
+    showEndScreen();
+    return;
+  }
+});
+
+// ═══════════════════════════════════════════════
+// END SCREEN
+// ═══════════════════════════════════════════════
+
+function showEndScreen() {
+  const total = state.humanWords + state.machineWords;
+  const hp = total === 0 ? 0 : Math.round(state.humanWords / total * 100);
+  const mp = 100 - hp;
+
+  $('final-stats').innerHTML =
+    '<div class="stat-box"><div class="stat-val">' + hp + '%</div><div class="stat-lbl">your words</div></div>' +
+    '<div class="stat-box"><div class="stat-val">' + mp + '%</div><div class="stat-lbl">machine words</div></div>' +
+    '<div class="stat-box"><div class="stat-val">' + state.accepted + '</div><div class="stat-lbl">accepted</div></div>' +
+    '<div class="stat-box"><div class="stat-val">' + state.rejected + '</div><div class="stat-lbl">rejected</div></div>';
+
+  if (hp >= 60) {
+    $('end-icon').textContent = '✍️';
+    $('end-title').textContent = 'You held the pen.';
+    $('end-text-1').textContent = 'You wrote most of this memo yourself — ' + hp + '% of the words are yours. The machine assisted, but you authored.';
+    $('end-text-2').textContent = 'Engelbart would call this the ideal: augmentation that amplifies without replacing. The human remains the locus of intention.';
+    $('end-text-3').textContent = 'But notice: even here, the machine shaped your choices. The suggestions you rejected still narrowed the space of what you wrote.';
+  } else if (hp >= 30) {
+    $('end-icon').textContent = '🤝';
+    $('end-title').textContent = 'A collaboration — of a kind.';
+    $('end-text-1').textContent = 'The memo is ' + mp + '% machine-written. You contributed ' + hp + '%. Is that a partnership, or an assisted signature?';
+    $('end-text-2').textContent = 'Brynjolfsson warns of the "Turing Trap": building AI to pass as human, rather than to extend what humans can do. Here, you are partly author, partly rubber stamp.';
+    $('end-text-3').textContent = 'Augmentation slid toward delegation. The question is: did the output reflect what you actually meant to say?';
+  } else {
+    $('end-icon').textContent = '👻';
+    $('end-title').textContent = 'The tool became the user.';
+    $('end-text-1').textContent = 'Only ' + hp + '% of this memo is yours. The machine wrote it; you edited it — or let it pass. This is the conceptual punchline Engelbart never fully reckoned with.';
+    $('end-text-2').textContent = 'Augmentation flipped into delegation, then into replacement. You are still here — but as reader, not writer. The machine\'s output carries your name.';
+    $('end-text-3').textContent = 'This is not a warning against tools. It is a question: what do we owe to the act of thinking for ourselves, even when the machine can do it better?';
+  }
+
+  showScreen('end');
+}
+
+// ═══════════════════════════════════════════════
+// START / RESTART
+// ═══════════════════════════════════════════════
+
+function resetGame() {
+  clearTimeout(state.idleTimer);
+  clearTimeout(state.intrusionTimer);
+  Object.assign(state, {
+    phase: 0, keystrokes: 0, accepted: 0, rejected: 0,
+    humanWords: 0, machineWords: 0, idleTimer: null, intrusionTimer: null,
+    ghostShown: false, lastGhostCompletion: '', paraIdx: 0, paraShown: false,
+    intrusionCount: 0, suggestions: [...SUGGESTIONS],
+    suggestionsDone: 0, phase5CanFinish: false, memoText: '',
+    _p1advance: false, _p2advance: false, _p3toastShown: false,
+  });
+
+  const editor = $('editor');
+  editor.value = '';
+  editor.disabled = false;
+  editor.style.color = '';
+  editor.style.fontStyle = '';
+  $('editor-wrap').style.display = '';
+  $('memo-readonly').style.display = 'none';
+  $('memo-readonly').textContent = '';
+  $('suggestions-header').style.display = 'none';
+  $('suggestion-area').innerHTML = '';
+  $('btn-advance').style.display = 'none';
+  $('prompt-label').textContent = 'Memo: On the future of the computing machine';
+  clearGhost();
+  updateBars();
+}
+
+$('btn-start').addEventListener('click', function() {
+  showScreen('game');
+  setupEditor();
+  enterPhase(1, function() {
+    $('editor').focus();
+    toast('Start typing. Pause briefly and the machine will offer to finish your sentence.', '');
+  });
+});
+
+$('btn-restart').addEventListener('click', function() {
+  resetGame();
+  showScreen('game');
+  enterPhase(1, function() {
+    $('editor').focus();
+    toast('Start typing. Pause briefly and the machine will offer to finish your sentence.', '');
+  });
+});
+
+// Init bars
+updateBars();
+</script>
+</body>
+</html>
