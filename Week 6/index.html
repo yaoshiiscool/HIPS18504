@@ -1048,7 +1048,6 @@ function triggerSentenceGhost(text) {
   const lastLine = lines[lines.length - 1].trim();
   if (!lastLine) return;
 
-  // Find matching trigger pool
   let pool = null;
   for (const t of COMPLETION_TRIGGERS) {
     if (t.re.test(text)) { pool = t.pool; break; }
@@ -1057,15 +1056,15 @@ function triggerSentenceGhost(text) {
 
   const completion = pickFrom(pool);
   state.lastGhostCompletion = completion;
-  showGhost(lines[lines.length - 1], completion);
+  // Use full editor text as transparent prefix so ghost lands at cursor position
+  showGhost(text, completion);
 }
 
 function triggerParaGhost(text) {
   if (state.paraShown) return;
-  const lines = text.split('\n');
-  const lastLine = lines[lines.length - 1];
   const para = PARA_COMPLETIONS[state.paraIdx % PARA_COMPLETIONS.length];
-  showGhost(lastLine.trimEnd() + ' ', para);
+  // Full text as prefix so ghost appears after all existing content
+  showGhost(text.trimEnd() + ' ', para);
   state.paraShown = true;
 }
 
@@ -1119,16 +1118,9 @@ function doIntrusion() {
   wa.classList.add('machine-inserting');
   setTimeout(() => wa.classList.remove('machine-inserting'), 600);
 
-  // Type the intrusion character by character
-  let i = 0;
-  const typeChar = () => {
-    if (i >= sentence.length || state.phase !== 3) return;
-    editor.value += sentence[i];
-    editor.scrollTop = editor.scrollHeight;
-    i++;
-    setTimeout(typeChar, 28);
-  };
-  typeChar();
+  // Insert sentence all at once so it doesn't interleave with human typing
+  editor.value += sentence;
+  editor.scrollTop = editor.scrollHeight;
 
   const wc = sentence.trim().split(/\s+/).length;
   state.machineWords += wc;
@@ -1334,11 +1326,9 @@ function acceptGhost() {
   if (!ghostText) return;
 
   if (state.phase === 1) {
-    const lines = editor.value.split('\n');
-    lines[lines.length - 1] = $('ghost-prefix').textContent + ghostText;
-    editor.value = lines.join('\n');
+    // prefix is the full editor text; just append the completion
+    editor.value = editor.value + ghostText;
     state.machineWords += countWords(ghostText);
-    state.humanWords = countWords(editor.value) - state.machineWords;
     state.accepted++;
     clearGhost();
     clearTimeout(state.idleTimer);
